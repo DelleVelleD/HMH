@@ -1,0 +1,35 @@
+version(1);
+
+project_name = "Handmade";
+
+patterns = {
+"*.cpp",
+"*.c",
+"*.h",
+"*.bat",
+"*.4coder",
+};
+
+blacklist_patterns = {
+".*",
+};
+
+load_paths = {{{
+{ ".", .relative = true, .recursive = true, }
+}, .os = "win"}
+};
+
+command_list = {
+	{
+		.name = "build",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+		.cmd = {
+			{ "call c:\github\HMH\code\build.bat;", .os = "win" },
+		},
+	},
+};
+
+fkey_command[1] = "build"; 
