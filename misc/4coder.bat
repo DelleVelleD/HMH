@@ -1,3 +1,5 @@
 @echo off
-call "shell.bat"
-start "a" "C:\4coder\4ed.exe" -F -W ../code/win32_handmade.cpp
+
+REM CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+START C:\4coder\4ed.exe -f 13
+SET PATH=c:\github\hmh\misc;%PATH%
