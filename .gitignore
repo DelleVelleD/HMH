@@ -1,0 +1,8 @@
+﻿# hmh ignores
+*.obj
+*.exe
+*.4coder
+/data
+/logs
+/build
+misc/4coder.bat
