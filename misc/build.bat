@@ -19,7 +19,7 @@ REM ______________ DEBUG (compiles without optimization)
 
 :DEBUG
 ECHO [47m[94m%DATE% %TIME% Debug[0m[0m
-@set OUT_DIR="..\build\Debug"
+@set OUT_DIR="..\build"
 IF NOT EXIST %OUT_DIR% mkdir %OUT_DIR%
 cl /EHsc /nologo /Zi /MD /MP %SOURCES% /Fe%OUT_DIR%/%OUT_EXE% /Fo%OUT_DIR%/ /link %LIBS%
 GOTO DONE
@@ -31,7 +31,7 @@ ECHO [47m[94m%DATE% %TIME% One File (Debug)[0m[0m
 IF [%~2]==[] ECHO "Place the .cpp path after using -i"; GOTO DONE;
 ECHO [93mWarning: debugging might not work with one-file compilation[0m
 
-@set OUT_DIR="..\build\Debug"
+@set OUT_DIR="..\build"
 IF NOT EXIST %OUT_DIR% mkdir %OUT_DIR%
 cl /c /EHsc /nologo /Zi /MD %~2 /Fo%OUT_DIR%/
 pushd ..\build\Debug
@@ -43,7 +43,7 @@ REM ______________ LINK ONLY (links with previosly created .obj files)
 
 :LINK_ONLY
 ECHO [47m[94m%DATE% %TIME% Link Only (Debug)[0m[0m
-pushd ..\build\Debug
+pushd ..\build
 link /nologo *.obj %LIBS% /OUT:%OUT_EXE% 
 popd
 GOTO DONE
@@ -52,10 +52,9 @@ REM ______________ RELEASE (compiles with optimization)
 
 :RELEASE
 ECHO [47m[94m%DATE% %TIME% Release[0m[0m
-@set OUT_DIR="..\build\Release"
+@set OUT_DIR="..\build"
 IF NOT EXIST %OUT_DIR% mkdir %OUT_DIR%
-cl /EHsc /nologo /Zi /MD /Ox /Oi /MP /std:c++17 %SOURCES% /Fe%OUT_DIR%/%OUT_EXE% /Fo%OUT_DIR%/ /link %LIBS%
-COPY %OUT_DIR%/%OUT_EXE% ..\%OUT_EXE%
+cl /EHsc /nologo /Zi /MD /O2 /MP %SOURCES% /Fe%OUT_DIR%/%OUT_EXE% /Fo%OUT_DIR%/ /link %LIBS%
 GOTO DONE
 
 :DONE

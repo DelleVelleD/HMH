@@ -4,6 +4,8 @@
 #include <windows.h>
 #include <xinput.h>
 #include <dsound.h>
+
+#include <stdio.h>
 #include <math.h>
 
 struct win32_offscreen_buffer{
@@ -311,6 +313,10 @@ Win32FillSoundBuffer(win32_sound_output* soundOutput, DWORD byteToLock, DWORD by
 
 internal int CALLBACK
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCode){
+	LARGE_INTEGER perfCountFrequencyResult;
+	QueryPerformanceFrequency(&perfCountFrequencyResult);
+	i64 perfCountFrequency = perfCountFrequencyResult.QuadPart;
+	
 	Win32LoadXInput();
 	
     WNDCLASSA WindowClass{};
@@ -349,6 +355,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 			Win32InitDSound(Window, soundOutput.samplesPerSecond, soundOutput.secondaryBufferSize);
 			Win32FillSoundBuffer(&soundOutput, 0, soundOutput.latencySampleCount*soundOutput.bytesPerSample);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			
+			u64 lastCycleCount = __rdtsc();
+			LARGE_INTEGER lastCounter;
+			QueryPerformanceCounter(&lastCounter);
 			
 			GlobalRunning = true;
 			while(GlobalRunning){
@@ -423,6 +433,23 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 				//draw window
 				win32_window_dimensions dimensions = Win32GetWindowDimensions(Window);
 				Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, dimensions.width, dimensions.height);
+				
+				u64 endCycleCount = __rdtsc();
+				LARGE_INTEGER endCounter;
+				QueryPerformanceCounter(&endCounter);
+				
+				u64 cyclesElapsed = endCycleCount - lastCycleCount;
+				i64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
+				f32 mspf = (1000.0*(f32)counterElapsed) / (f32)perfCountFrequency;
+				f32 fps = (f32)perfCountFrequency / (f32)counterElapsed;
+				f32 mcpf = (f32)cyclesElapsed / (1000.0*1000.0);
+				
+				char buffer[256];
+				sprintf(buffer, "%.2fmspf, %.2ffps, %.2fmcpf\n", mspf, fps, mcpf);
+				OutputDebugStringA(buffer);
+				
+				lastCounter = endCounter;
+				lastCycleCount = endCycleCount;
 			}
 		}else{ /*TODO logging */ }
 	}else{ /*TODO logging */ }
