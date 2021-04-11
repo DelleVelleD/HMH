@@ -2,7 +2,7 @@
 
 pushd c:\github\hmh\src
 
-@set SOURCES=*.cpp
+@set SOURCES=win32_handmade.cpp
 @set LIBS=user32.lib gdi32.lib
 @set OUT_EXE=hmh64.exe
 

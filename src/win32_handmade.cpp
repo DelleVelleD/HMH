@@ -1,5 +1,6 @@
 //windows entry point
 #include "defines.h"
+#include "handmade.cpp"
 
 #include <windows.h>
 #include <xinput.h>
@@ -14,7 +15,6 @@ struct win32_offscreen_buffer{
 	int width;
 	int height;
 	int pitch; //possible row offset
-	int bytesPerPixel;
 };
 
 //TODO temporary globals
@@ -44,6 +44,11 @@ global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 //DirectSoundCreate
 #define DIRECT_SOUND_CREATE(name) DWORD WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+void* 
+PlatformLoadFile(char* filename){
+	return 0;
+}
 
 internal void
 Win32LoadXInput(){
@@ -126,24 +131,6 @@ Win32GetWindowDimensions(HWND Window){
 }
 
 internal void
-RenderGradient(win32_offscreen_buffer* buffer, int xOffset, int yOffset){
-	u8* row = (u8*)buffer->memory;
-	for(int y = 0; y < buffer->height; ++y){
-		u32* pixel = (u32*)row;
-		for(int x = 0; x < buffer->width; ++x){
-			//b,g,r,pad     because windows
-			u8 b = (x + xOffset);
-			u8 g = (y + yOffset);
-			//u8 r = ;
-			//u8 p = ;
-			
-			*pixel++ = (/*((r << 16) |*/ (g << 8) | b); //shift red and green, increment the pointer
-		}
-		row += buffer->pitch;
-	}
-}
-
-internal void
 Win32ResizeDIBSection(win32_offscreen_buffer* buffer, int width, int height){
 	//free memory if it exists
 	if(buffer->memory){
@@ -152,7 +139,7 @@ Win32ResizeDIBSection(win32_offscreen_buffer* buffer, int width, int height){
 	
 	buffer->width = width;
 	buffer->height = height;
-	buffer->bytesPerPixel = 4;
+	int bytesPerPixel = 4;
 	
 	//setup bitmap info
 	buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
@@ -163,12 +150,9 @@ Win32ResizeDIBSection(win32_offscreen_buffer* buffer, int width, int height){
 	buffer->info.bmiHeader.biCompression = BI_RGB;
 	
 	//allocate memory
-	int BitmapMemorySize = buffer->bytesPerPixel * width * height;
+	int BitmapMemorySize = bytesPerPixel * width * height;
 	buffer->memory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-	buffer->pitch = buffer->width * buffer->bytesPerPixel;
-	
-	//draw the pixels
-	//RenderGradient(0, 0); //TODO remove this possibly
+	buffer->pitch = buffer->width * bytesPerPixel;
 }
 
 internal void
@@ -411,7 +395,12 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 				}
 				
 				//render
-				RenderGradient(&GlobalBackbuffer, xOffset, yOffset);
+				game_offscreen_buffer renderBuffer;
+				renderBuffer.memory = GlobalBackbuffer.memory;
+				renderBuffer.width = GlobalBackbuffer.width;
+				renderBuffer.height = GlobalBackbuffer.height;
+				renderBuffer.pitch  = GlobalBackbuffer.pitch;
+				GameUpdateAndRender(&renderBuffer, xOffset, yOffset);
 				
 				//sound output test
 				DWORD playCursor;
@@ -444,9 +433,11 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 				f32 fps = (f32)perfCountFrequency / (f32)counterElapsed;
 				f32 mcpf = (f32)cyclesElapsed / (1000.0*1000.0);
 				
+#if 0
 				char buffer[256];
 				sprintf(buffer, "%.2fmspf, %.2ffps, %.2fmcpf\n", mspf, fps, mcpf);
 				OutputDebugStringA(buffer);
+#endif
 				
 				lastCounter = endCounter;
 				lastCycleCount = endCycleCount;
