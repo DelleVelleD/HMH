@@ -2,6 +2,8 @@
 #ifndef HANDMADE_H
 #define HANDMADE_H
 
+#include "defines.h"
+
 //// services provided from the platform layer to the game ////
 
 
@@ -13,6 +15,12 @@ struct game_offscreen_buffer{
 	int width;
 	int height;
 	int pitch; //possible row offset
+};
+
+struct game_sound_output_buffer{
+	int samplesPerSecond;
+	int sampleCount;
+	i16* samples;
 };
 
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
