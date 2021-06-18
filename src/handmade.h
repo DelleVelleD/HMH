@@ -20,10 +20,10 @@ struct game_offscreen_buffer{
 struct game_sound_output_buffer{
 	int samplesPerSecond;
 	int sampleCount;
-	i16* samples;
+	s16* samples;
 };
 
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
-internal void GameUpdateAndRender(game_offscreen_buffer* renderBuffer, int xOffset, int yOffset);
+static_internal void GameUpdateAndRender(game_offscreen_buffer* renderBuffer, int xOffset, int yOffset);
 
 #endif //HANDMADE_H

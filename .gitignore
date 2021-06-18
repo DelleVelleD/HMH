@@ -1,9 +1,7 @@
 ﻿# hmh ignores
 *.obj
 *.exe
-*.4coder
 *.pdb
 /data
 /logs
 /build
-misc/4coder.bat

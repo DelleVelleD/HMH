@@ -1,0 +1,66 @@
+version(1);
+
+project_name = "handmade";
+
+patterns = {
+	"*.cpp",
+	"*.c",
+	"*.h",
+	"*.inl",
+	"*.bat",
+	"*.4coder",
+	"*.gitignore",
+};
+
+blacklist_patterns = {
+	".*",
+};
+
+load_paths = {{{
+			{ ".", .relative = true, .recursive = true, }
+		}, .os = "win"}
+};
+
+command_list = {
+	{
+		.name = "build",
+		.out = "*compilation*", .footer_panel = true, .save_dirty_files = true, .cursor_at_end = false,
+		.cmd = {
+			{ "build.bat", .os = "win" },
+		},
+	},
+	{
+		.name = "build_release",
+		.out = "*compilation*", .footer_panel = true, .save_dirty_files = true, .cursor_at_end = false,
+		.cmd = {
+			{ "build.bat -r", .os = "win" },
+		},
+	},
+	{
+		.name = "remedy_open", 
+		.out = "", .footer_panel = false, .save_dirty_files = true, .cursor_at_end = false,
+		.cmd = {
+			{ "remedybg.exe open-session misc\hmh64.rdbg", .os = "win" },
+		},
+	},
+	{
+		.name = "remedy_start_debugging",
+		.out = "", .footer_panel = false, .save_dirty_files = true, .cursor_at_end = false,
+		.cmd = {
+			{ "remedybg.exe start-debugging", .os = "win" },
+		},
+	},
+	{
+		.name = "remedy_stop_debugging",
+		.out = "", .footer_panel = false, .save_dirty_files = true, .cursor_at_end = false,
+		.cmd = {
+			{ "remedybg.exe stop-debugging", .os = "win" },
+		},
+	},
+};
+
+fkey_command[1] = "build"; 
+fkey_command[2] = "build_release"; 
+fkey_command[4] = "remedy_open";
+fkey_command[5] = "remedy_start_debugging";
+fkey_command[6] = "remedy_stop_debugging";

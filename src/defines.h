@@ -2,45 +2,47 @@
 #ifndef HMH_DEFINES_H
 #define HMH_DEFINES_H
 
-//math constants
+//math macros
 #define M_PI         3.14159265359f
 #define M_E          2.71828182846f
 #define M_TWOTHIRDS  0.66666666666f
 #define M_ONETWELFTH 0.08333333333f
-
-//conversions
 #define RADIANS(x) (x * (M_PI / 180.f))
 #define DEGREES(x) (x * (180.f / M_PI))
 
 //number typedefs
-typedef signed char    i8;
-typedef signed short   i16;
-typedef signed int     i32;
-typedef signed long    i64;
+typedef signed char    s8;
+typedef signed short   s16;
+typedef signed int     s32;
+typedef signed long    s64;
 typedef unsigned char  u8;
 typedef unsigned short u16;
 typedef unsigned int   u32;
 typedef unsigned long  u64;
 typedef float          f32;
 typedef double         f64;
-typedef i32            b32;
+typedef s32            b32;
 
 //static defines
-#define internal        static
+#define static_internal static
 #define local_persist   static
 #define global_variable static
 
-//delle's annoyance with c++ cast syntax; which will probably cause problems somewhere
-#define i8(x)  static_cast<i8>(x)
-#define i16(x) static_cast<i16>(x)
-#define i32(x) static_cast<i32>(x)
-#define i64(x) static_cast<i64>(x)
-#define u8(x)  static_cast<u8>(x)
-#define u16(x) static_cast<u16>(x)
-#define u32(x) static_cast<u32>(x)
-#define u64(x) static_cast<u64>(x)
-#define f32(x) static_cast<f32>(x)
-#define f64(x) static_cast<f64>(x)
-#define b32(x) static_cast<b32>(x)
+#define forn(iterator,iteration_count) for(int iterator = 0; iterator < iteration_count; ++i)
+
+// delay the operation until the end of scope
+// https://stackoverflow.com/a/42060129
+#ifndef defer
+struct defer_dummy {};
+template <class F> struct deferrer { F f; ~deferrer() { f(); } };
+template <class F> deferrer<F> operator*(defer_dummy, F f) { return {f}; }
+#define DEFER_(LINE) zz_defer##LINE
+#define DEFER(LINE) DEFER_(LINE)
+#define defer auto DEFER(__LINE__) = defer_dummy{} *[&]()
+#endif // defer
+
+//size of c-style array; dont use on a pointer
+//ref: DearImGui imgui.h
+#define ArrayCount(_ARR) ((int)(sizeof(_ARR) / sizeof(*(_ARR))))
 
 #endif //HMH_DEFINES_H
