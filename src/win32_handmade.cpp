@@ -92,8 +92,8 @@ DEBUGPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size){
 static_internal void
 Win32LoadXInput(){
 	HMODULE xinput_library = LoadLibraryA("xinput1_4.dll"); //TODO diagnostic
-	if(!xinput_library) HMODULE xinput_library = LoadLibraryA("xinput9_1_0.dll"); //TODO diagnostic
-	if(!xinput_library) HMODULE xinput_library = LoadLibraryA("xinput1_3.dll"); //TODO diagnostic
+	if(!xinput_library) xinput_library = LoadLibraryA("xinput9_1_0.dll"); //TODO diagnostic
+	if(!xinput_library) xinput_library = LoadLibraryA("xinput1_3.dll"); //TODO diagnostic
 	if(xinput_library){
 		XInputGetState = (x_input_get_state*)GetProcAddress(xinput_library, "XInputGetState");
 		XInputSetState = (x_input_set_state*)GetProcAddress(xinput_library, "XInputSetState");
@@ -227,40 +227,7 @@ Win32MainWindowCallback(HWND window, UINT message, WPARAM w_param, LPARAM l_para
 		case WM_SYSKEYUP:
 		case WM_KEYDOWN:
 		case WM_KEYUP:{
-			u32 VKCode = w_param;
-			b32 was_down = ((l_param & (1 << 30)) != 0);
-			b32 is_down = ((l_param & (1 << 31)) == 0);
-			if(was_down != is_down){
-				if(VKCode == 'W'){
-					
-				}else if(VKCode == 'A'){
-					
-				}else if(VKCode == 'S'){
-					
-				}else if(VKCode == 'D'){
-					
-				}else if(VKCode == 'Q'){
-					
-				}else if(VKCode == 'E'){
-					
-				}else if(VKCode == VK_UP){
-					
-				}else if(VKCode == VK_LEFT){
-					
-				}else if(VKCode == VK_DOWN){
-					
-				}else if(VKCode == VK_RIGHT){
-					
-				}else if(VKCode == VK_ESCAPE){
-					
-				}else if(VKCode == VK_SPACE){
-					
-				}
-			}
-			b32 alt_key_was_down = l_param & (1 << 29); //checks if the 29th bit is set
-			if(VKCode == VK_F4 && alt_key_was_down){
-				global_running = false;
-			}
+			Assert(!"Keyboard input came in through a non-dispatch message");
 		}break;
 		
 		case WM_PAINT:{
@@ -334,7 +301,73 @@ Win32ProcessXInputDigitalButton(DWORD xinput_button_state, GameButtonState* old_
 	new_state->half_transition_count = (old_state->ended_down != new_state->ended_down) ? 1 : 0;
 }
 
-static_internal int CALLBACK
+static_internal void
+Win32ProcessKeyboardMessage(GameButtonState* new_state, b32 is_down){
+	new_state->ended_down = is_down;
+	new_state->half_transition_count += 1;
+}
+
+static_internal void
+Win32ProcessPendingMessages(GameControllerInput* keyboard_controller){
+	MSG message;
+	while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)){
+		switch(message.message){
+			//keyboard input
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_KEYUP:{
+				u32 VKCode = (u32)message.wParam;
+				b32 was_down = ((message.lParam & (1 << 30)) != 0);
+				b32 is_down = ((message.lParam & (1 << 31)) == 0);
+				if(was_down != is_down){
+					if      (VKCode == 'W'){
+						
+					}else if(VKCode == 'A'){
+						
+					}else if(VKCode == 'S'){
+						
+					}else if(VKCode == 'D'){
+						
+					}else if(VKCode == 'Q'){
+						Win32ProcessKeyboardMessage(&keyboard_controller->shoulder_left, is_down);
+					}else if(VKCode == 'E'){
+						Win32ProcessKeyboardMessage(&keyboard_controller->shoulder_right, is_down);
+					}else if(VKCode == VK_UP){
+						Win32ProcessKeyboardMessage(&keyboard_controller->button_up, is_down);
+					}else if(VKCode == VK_LEFT){
+						Win32ProcessKeyboardMessage(&keyboard_controller->button_left, is_down);
+					}else if(VKCode == VK_DOWN){
+						Win32ProcessKeyboardMessage(&keyboard_controller->button_down, is_down);
+					}else if(VKCode == VK_RIGHT){
+						Win32ProcessKeyboardMessage(&keyboard_controller->button_right, is_down);
+					}else if(VKCode == VK_ESCAPE){
+						Win32ProcessKeyboardMessage(&keyboard_controller->button_start, is_down);
+					}else if(VKCode == VK_SPACE){
+						
+					}
+				}
+				b32 alt_key_was_down = message.lParam & (1 << 29); //checks if the 29th bit is set
+				if(VKCode == VK_F4 && alt_key_was_down){
+					global_running = false;
+				}
+			}break;
+			
+			//quit message
+			case WM_QUIT:{
+				global_running = false;
+			}break;
+			
+			//other messages
+			default:{
+				TranslateMessage(&message);
+				DispatchMessageA(&message);
+			}break;
+		}
+	}
+}
+
+int CALLBACK
 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code){
 	//// init input ////
 	Win32LoadXInput();
@@ -381,17 +414,17 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	s16* samples = (s16*)VirtualAlloc(0, sound_output.secondary_buffer_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	
 #if HANDMADE_INTERNAL
-	LPVOID base_address = (LPVOID)Terabytes((u64)2);
+	LPVOID base_address = (LPVOID)Terabytes(2);
 #else
 	LPVOID base_address = 0;
 #endif //HANDMADE_INTERNAL
 	
 	GameMemory game_memory{};
 	game_memory.permanent_storage_size = Megabytes(64);
-	game_memory.transient_storage_size = Gigabytes((u64)4);
+	game_memory.transient_storage_size = Gigabytes(1);
 	u64 total_size = game_memory.permanent_storage_size + game_memory.transient_storage_size;
 	
-	game_memory.permanent_storage = VirtualAlloc(base_address, total_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+	game_memory.permanent_storage = VirtualAlloc(base_address, (size_t)total_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	game_memory.transient_storage = (u8*)game_memory.permanent_storage + game_memory.permanent_storage_size;
 	
 	if(!samples || !game_memory.permanent_storage || !game_memory.transient_storage){ /*TODO error logging */ }
@@ -408,20 +441,14 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	//// start windows loop ////
 	global_running = true;
 	while(global_running){
-		MSG message;
+		GameControllerInput* keyboard_controller = &new_input->controllers[0];
+		*keyboard_controller = {};
 		
-		//get a message when there is one, keep going otherwise
-		while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)){
-			if(message.message == WM_QUIT){
-				global_running = false;
-			}
-			
-			TranslateMessage(&message);
-			DispatchMessageA(&message);
-		}
+		//handle a message when there is one, keep going otherwise
+		Win32ProcessPendingMessages(keyboard_controller);
 		
 		//get input from XInput
-		int max_controller_count = XUSER_MAX_COUNT;
+		DWORD max_controller_count = XUSER_MAX_COUNT;
 		if(max_controller_count > ArrayCount(new_input->controllers)) max_controller_count = ArrayCount(new_input->controllers);
 		
 		for(DWORD controller_idx = 0; controller_idx < max_controller_count; ++controller_idx){
@@ -434,10 +461,10 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 				XINPUT_GAMEPAD* pad = &controller_state.Gamepad;
 				
 				//dpad
-				b32 up      = (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-				b32 down    = (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-				b32 left    = (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-				b32 right   = (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+				b32 up    = (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+				b32 down  = (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+				b32 left  = (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+				b32 right = (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
 				
 				new_controller->analog = true;
 				{//left stick

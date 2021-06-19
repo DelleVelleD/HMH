@@ -24,8 +24,8 @@ RenderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
 		u32* pixel = (u32*)row;
 		for(int x = 0; x < buffer->width; ++x){
 			//b,g,r,pad     because windows
-			u8 b = (x + xOffset);
-			u8 g = (y + yOffset);
+			u8 b = (u8)(x + xOffset);
+			u8 g = (u8)(y + yOffset);
 			//u8 r = ;
 			//u8 p = ;
 			
@@ -54,8 +54,8 @@ GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* r
 	
 	GameControllerInput* input0 = &input->controllers[0];
 	if(input0->analog){
-		game_state->x_offset += (int)(4.f*input0->stick_left.end_x);
-		game_state->tone_hz = 256 + (int)(128.f*input0->stick_left.end_y);
+		game_state->x_offset += (int)(4.f*(input0->stick_left.end_x));
+		game_state->tone_hz = 256 + (int)(128.f*(input0->stick_left.end_y));
 	}else{
 		
 	}
