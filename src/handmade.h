@@ -2,10 +2,28 @@
 #ifndef HANDMADE_H
 #define HANDMADE_H
 
-#include "defines.h"
+
+
+inline u32 
+SafeTruncateU64(u64 value){
+	Assert(value <= 0xFFFFFFFF);
+	return (u32)value;
+}
 
 //// services provided from the platform layer to the game ////
 
+#if HANDMADE_INTERNAL
+//@Important
+//NOTE these are not for doing anything in the release build: they are blocking
+// and the write doesnt protect against lost data
+struct DEBUGReadFileResult{
+	void* memory;
+	u32   memory_size;
+};
+static_internal DEBUGReadFileResult DEBUGPlatformReadEntireFile(char* filename);
+static_internal void DEBUGPlatformFreeFileMemory(void* memory);
+static_internal b32 DEBUGPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size);
+#endif //HANDMADE_INTERNAL
 
 //// services provided from the game to the platform layer ////
 

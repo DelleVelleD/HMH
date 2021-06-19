@@ -41,6 +41,13 @@ GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* r
 	Assert(sizeof(game_state) <= memory->permanent_storage_size);
 	
 	if(!memory->initialized) {
+		char* filename = __FILE__;
+		DEBUGReadFileResult test = DEBUGPlatformReadEntireFile(filename);
+		if(test.memory){
+			DEBUGPlatformWriteEntireFile("data/test.out", test.memory, test.memory_size);
+			DEBUGPlatformFreeFileMemory(test.memory);
+		}
+		
 		game_state->tone_hz  = 256;
 		memory->initialized = true;
 	}

@@ -8,8 +8,6 @@
 #include <xinput.h>
 #include <dsound.h>
 
-#include <stdio.h>
-
 #include "win32_handmade.h"
 
 //TODO temporary globals
@@ -35,9 +33,60 @@ global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name) DWORD WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-static_internal void* 
-PlatformLoadFile(char* filename){
-	return 0;
+static_internal DEBUGReadFileResult
+DEBUGPlatformReadEntireFile(char* filename){
+	DEBUGReadFileResult result{};
+	
+	HANDLE file_handle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	if(file_handle != INVALID_HANDLE_VALUE){
+		LARGE_INTEGER file_size;
+		if(GetFileSizeEx(file_handle, &file_size)){
+			u32 file_size_32 = SafeTruncateU64(file_size.QuadPart); //NOTE ReadFile only takes up to a u32 value
+			result.memory = VirtualAlloc(0, file_size.QuadPart, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+			if(result.memory){
+				DWORD bytes_read;
+				if(ReadFile(file_handle, result.memory, file_size_32, &bytes_read, 0) &&
+				   file_size_32 == bytes_read){
+					//NOTE file read successfully
+					result.memory_size = file_size_32;
+				}else{
+					/*TODO error logging*/
+					DEBUGPlatformFreeFileMemory(result.memory);
+				}
+			}else{ /*TODO error logging*/ }
+		}else{ /*TODO error logging*/  }
+		
+		CloseHandle(file_handle);
+	}else{ /*TODO error logging*/  }
+	
+	return result; 
+}
+
+static_internal void 
+DEBUGPlatformFreeFileMemory(void* memory){
+	if(memory){
+		VirtualFree(memory, 0, MEM_RELEASE);
+		memory = 0;
+	}
+}
+
+static_internal b32 
+DEBUGPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size){
+	b32 result = false;
+	
+	HANDLE file_handle = CreateFileA(filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+	if(file_handle != INVALID_HANDLE_VALUE){
+		DWORD bytes_written;
+		if(WriteFile(file_handle, memory, memory_size, &bytes_written, 0)){
+			//NOTE file write successful
+			result = (bytes_written == memory_size);
+		}else{
+			/*TODO error logging*/
+		}
+		CloseHandle(file_handle);
+	}else{ /*TODO error logging*/  }
+	
+	return result;
 }
 
 static_internal void

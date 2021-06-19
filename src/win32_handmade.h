@@ -24,5 +24,4 @@ struct Win32SoundOutput{
 	int latency_sample_count;
 };
 
-
 #endif //WIN32_HANDMADE_H
