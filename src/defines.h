@@ -30,7 +30,7 @@ typedef s32                b32;
 #define local_persist   static
 #define global_variable static
 
-#define forn(iterator,iteration_count) for(int iterator = 0; iterator < iteration_count; ++i)
+#define forn(iterator,iteration_count) for(int iterator = 0; iterator < iteration_count; ++iterator)
 
 // delay the operation until the end of scope
 // https://stackoverflow.com/a/42060129

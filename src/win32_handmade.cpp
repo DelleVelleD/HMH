@@ -227,7 +227,7 @@ Win32MainWindowCallback(HWND window, UINT message, WPARAM w_param, LPARAM l_para
 		case WM_SYSKEYUP:
 		case WM_KEYDOWN:
 		case WM_KEYUP:{
-			Assert(!"Keyboard input came in through a non-dispatch message");
+			Assert(!"Keyboard input came in through a non-dispatch message; it should have been captured already");
 		}break;
 		
 		case WM_PAINT:{
@@ -301,8 +301,20 @@ Win32ProcessXInputDigitalButton(DWORD xinput_button_state, GameButtonState* old_
 	new_state->half_transition_count = (old_state->ended_down != new_state->ended_down) ? 1 : 0;
 }
 
+static_internal f32 
+Win32ProcessXInputStickValue(SHORT value, SHORT deadzone_threshold){
+	f32 result = 0;
+	if(value < -deadzone_threshold){
+		result = (f32)((value + deadzone_threshold) / (32768.f - deadzone_threshold));
+	}else if(value > deadzone_threshold){
+		result = (f32)((value - deadzone_threshold) / (32767.f - deadzone_threshold));
+	}
+	return result;
+}
+
 static_internal void
 Win32ProcessKeyboardMessage(GameButtonState* new_state, b32 is_down){
+	Assert(new_state->ended_down != is_down);
 	new_state->ended_down = is_down;
 	new_state->half_transition_count += 1;
 }
@@ -322,13 +334,13 @@ Win32ProcessPendingMessages(GameControllerInput* keyboard_controller){
 				b32 is_down = ((message.lParam & (1 << 31)) == 0);
 				if(was_down != is_down){
 					if      (VKCode == 'W'){
-						
+						Win32ProcessKeyboardMessage(&keyboard_controller->left_stick_up, is_down);
 					}else if(VKCode == 'A'){
-						
+						Win32ProcessKeyboardMessage(&keyboard_controller->left_stick_left, is_down);
 					}else if(VKCode == 'S'){
-						
+						Win32ProcessKeyboardMessage(&keyboard_controller->left_stick_down, is_down);
 					}else if(VKCode == 'D'){
-						
+						Win32ProcessKeyboardMessage(&keyboard_controller->left_stick_right, is_down);
 					}else if(VKCode == 'Q'){
 						Win32ProcessKeyboardMessage(&keyboard_controller->shoulder_left, is_down);
 					}else if(VKCode == 'E'){
@@ -344,7 +356,7 @@ Win32ProcessPendingMessages(GameControllerInput* keyboard_controller){
 					}else if(VKCode == VK_ESCAPE){
 						Win32ProcessKeyboardMessage(&keyboard_controller->button_start, is_down);
 					}else if(VKCode == VK_SPACE){
-						
+						Win32ProcessKeyboardMessage(&keyboard_controller->button_back, is_down);
 					}
 				}
 				b32 alt_key_was_down = message.lParam & (1 << 29); //checks if the 29th bit is set
@@ -441,50 +453,68 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	//// start windows loop ////
 	global_running = true;
 	while(global_running){
-		GameControllerInput* keyboard_controller = &new_input->controllers[0];
-		*keyboard_controller = {};
+		GameControllerInput* old_keyboard_controller = GetController(old_input, 0);
+		GameControllerInput* new_keyboard_controller = GetController(new_input, 0);
+		*new_keyboard_controller = {};
+		new_keyboard_controller->connected = true;
+		forn(button_idx, ArrayCount(new_keyboard_controller->buttons)){
+			new_keyboard_controller->buttons[button_idx].ended_down = old_keyboard_controller->buttons[button_idx].ended_down;
+		}
 		
 		//handle a message when there is one, keep going otherwise
-		Win32ProcessPendingMessages(keyboard_controller);
+		Win32ProcessPendingMessages(new_keyboard_controller);
 		
 		//get input from XInput
-		DWORD max_controller_count = XUSER_MAX_COUNT;
-		if(max_controller_count > ArrayCount(new_input->controllers)) max_controller_count = ArrayCount(new_input->controllers);
+		DWORD max_controller_count = XUSER_MAX_COUNT; //one extra b/c keyboard
+		if(max_controller_count > (ArrayCount(new_input->controllers) - 1)) {
+			max_controller_count = (ArrayCount(new_input->controllers) - 1);
+		}
 		
 		for(DWORD controller_idx = 0; controller_idx < max_controller_count; ++controller_idx){
-			GameControllerInput* old_controller = &old_input->controllers[controller_idx];
-			GameControllerInput* new_controller = &new_input->controllers[controller_idx];
+			DWORD our_controller_idx = controller_idx + 1;
+			GameControllerInput* old_controller = GetController(old_input, our_controller_idx);
+			GameControllerInput* new_controller = GetController(new_input, our_controller_idx);
 			
 			XINPUT_STATE controller_state;
 			if(XInputGetState(controller_idx, &controller_state) == ERROR_SUCCESS){
 				//controller plugged in
 				XINPUT_GAMEPAD* pad = &controller_state.Gamepad;
+				new_controller->connected = true;
 				
-				//dpad
-				b32 up    = (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-				b32 down  = (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-				b32 left  = (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-				b32 right = (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-				
-				new_controller->analog = true;
-				{//left stick
-					new_controller->stick_left.start_x = old_controller->stick_left.start_x;
-					new_controller->stick_left.start_y = old_controller->stick_left.start_y;
-					f32 x;
-					if(pad->sThumbLX < 0){
-						x = (f32)pad->sThumbLX / 32768.f;
-					}else{
-						x = (f32)pad->sThumbLX / 32767.f;
-					}
-					f32 y;
-					if(pad->sThumbLY < 0){
-						y = (f32)pad->sThumbLY / 32768.f;
-					}else{
-						y = (f32)pad->sThumbLY / 32767.f;
-					}
-					new_controller->stick_left.min_x = new_controller->stick_left.max_x = new_controller->stick_left.end_x = x;
-					new_controller->stick_left.min_y = new_controller->stick_left.max_y = new_controller->stick_left.end_y = y;
+				//sticks as analogs
+				new_controller->left_stick_average_x = Win32ProcessXInputStickValue(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+				new_controller->left_stick_average_y = Win32ProcessXInputStickValue(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+				if(new_controller->left_stick_average_x != 0.0f || new_controller->left_stick_average_y != 0.0f){
+					new_controller->analog = true;
 				}
+				
+				//dpad (currently overrides left stick analogs)
+				if(pad->wButtons & XINPUT_GAMEPAD_DPAD_UP){
+					new_controller->left_stick_average_y = 1.f;
+					new_controller->analog = false;
+				}
+				if(pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN){
+					new_controller->left_stick_average_y = -1.f;
+					new_controller->analog = false;
+				}
+				if(pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT){
+					new_controller->left_stick_average_x = 1.f;
+					new_controller->analog = false;
+				}
+				if(pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT){
+					new_controller->left_stick_average_x = -1.f;
+					new_controller->analog = false;
+				}
+				
+				//sticks as buttons
+				Win32ProcessXInputDigitalButton((new_controller->left_stick_average_x < -0.5f) ? 1 : 0,
+												&old_controller->left_stick_left, &new_controller->left_stick_left, 1);
+				Win32ProcessXInputDigitalButton((new_controller->left_stick_average_x > 0.5f) ? 1 : 0,
+												&old_controller->left_stick_right, &new_controller->left_stick_right, 1);
+				Win32ProcessXInputDigitalButton((new_controller->left_stick_average_y < -0.5f) ? 1 : 0,
+												&old_controller->left_stick_up, &new_controller->left_stick_up, 1);
+				Win32ProcessXInputDigitalButton((new_controller->left_stick_average_y > 0.5f) ? 1 : 0,
+												&old_controller->left_stick_down, &new_controller->left_stick_down, 1);
 				
 				//buttons
 				Win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_down, &new_controller->button_down, XINPUT_GAMEPAD_A);
@@ -494,7 +524,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 				Win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->shoulder_left, &new_controller->shoulder_left, XINPUT_GAMEPAD_LEFT_SHOULDER);
 				Win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->shoulder_right, &new_controller->shoulder_right, XINPUT_GAMEPAD_RIGHT_SHOULDER);
 				Win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_start, &new_controller->button_start, XINPUT_GAMEPAD_START);
-				Win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_select, &new_controller->button_select, XINPUT_GAMEPAD_BACK);
+				Win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_back, &new_controller->button_back, XINPUT_GAMEPAD_BACK);
 				
 				//controller rumble
 				//XINPUT_VIBRATION vibration;
@@ -503,6 +533,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 				//XInputSetState(controller_idx, &vibration);
 			}else{
 				//controller not available
+				new_controller->connected = false;
 			}
 		}
 		

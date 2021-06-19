@@ -46,46 +46,44 @@ struct GameButtonState{
 	b32 ended_down;
 };
 
-struct GameStickState{
-	f32 start_x;
-	f32 start_y;
-	f32 end_x;
-	f32 end_y;
-	f32 min_x;
-	f32 min_y;
-	f32 max_x;
-	f32 max_y;
-};
-
 struct GameControllerInput{
+	b32 connected;
 	b32 analog;
 	
-	union{
-		GameStickState sticks[2];
-		struct{
-			GameStickState stick_right;
-			GameStickState stick_left;
-		};
-	};
+	f32 left_stick_average_x;
+	f32 left_stick_average_y;
 	
 	union{
-		GameButtonState buttons[8];
+		GameButtonState buttons[12];
 		struct{
+			GameButtonState left_stick_up;
+			GameButtonState left_stick_down;
+			GameButtonState left_stick_right;
+			GameButtonState left_stick_left;
+			
 			GameButtonState button_start;
-			GameButtonState button_select;
+			GameButtonState button_back;
 			GameButtonState button_up;
 			GameButtonState button_down;
 			GameButtonState button_right;
 			GameButtonState button_left;
+			
 			GameButtonState shoulder_right;
 			GameButtonState shoulder_left;
+			
+			//NOTE all buttons must be added above this line
+			GameButtonState TERMINATOR;
 		};
 	};
 };
 
 struct GameInput{
-	GameControllerInput controllers[4];
+	GameControllerInput controllers[5];
 };
+inline GameControllerInput* GetController(GameInput* input, u32 controller_index){
+	Assert(controller_index < ArrayCount(input->controllers));
+	return &input->controllers[controller_index];
+}
 
 struct GameMemory{
 	b32   initialized;

@@ -37,9 +37,11 @@ RenderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
 
 static_internal void 
 GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer){
-	GameState* game_state = (GameState*)memory->permanent_storage;
-	Assert(sizeof(game_state) <= memory->permanent_storage_size);
+	Assert((&input->controllers[0].TERMINATOR - &input->controllers[0].buttons[0]) == 
+		   (ArrayCount(input->controllers[0].buttons) - 1));
+	Assert(sizeof(GameState) <= memory->permanent_storage_size);
 	
+	GameState* game_state = (GameState*)memory->permanent_storage;
 	if(!memory->initialized) {
 		char* filename = __FILE__;
 		DEBUGReadFileResult test = DEBUGPlatformReadEntireFile(filename);
@@ -52,16 +54,24 @@ GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* r
 		memory->initialized = true;
 	}
 	
-	GameControllerInput* input0 = &input->controllers[0];
-	if(input0->analog){
-		game_state->x_offset += (int)(4.f*(input0->stick_left.end_x));
-		game_state->tone_hz = 256 + (int)(128.f*(input0->stick_left.end_y));
-	}else{
+	forn(controller_idx, ArrayCount(input->controllers)){
+		GameControllerInput* controller = GetController(input, controller_idx);
+		if(controller->analog){
+			game_state->x_offset += (int)(4.f*(controller->left_stick_average_x));
+			game_state->tone_hz = 256 + (int)(128.f*(controller->left_stick_average_y));
+		}else{
+			if(controller->left_stick_left.ended_down){
+				game_state->x_offset -= 1;
+			}
+			
+			if(controller->left_stick_right.ended_down){
+				game_state->x_offset += 1;
+			}
+		}
 		
-	}
-	
-	if(input0->button_down.ended_down){
-		game_state->y_offset += 1;
+		if(controller->button_down.ended_down){
+			game_state->y_offset += 1;
+		}
 	}
 	
 	GameOutputSound(sound_buffer, game_state->tone_hz);
