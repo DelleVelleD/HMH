@@ -1,25 +1,25 @@
 #include "handmade.h"
 
 static_internal void
-GameOutputSound(game_sound_output_buffer* soundBuffer, int toneHz){
+GameOutputSound(GameSoundOutputBuffer* sound_buffer, int tone_hz){
 	local_persist f32 tSine;
 	s16 toneVolume = 3000;
-	//int toneHz = 256;
-	int wavePeriod = soundBuffer->samplesPerSecond / toneHz;
+	//int tone_hz = 256;
+	int wavePeriod = sound_buffer->samples_per_second / tone_hz;
 	
-	s16* sampleOut = soundBuffer->samples;
-	for(int sampleIndex = 0; sampleIndex < soundBuffer->sampleCount; ++sampleIndex){
+	s16* sampleOut = sound_buffer->samples;
+	for(int sampleIndex = 0; sampleIndex < sound_buffer->sample_count; ++sampleIndex){
 		f32 sineValue = sinf(tSine);
 		s16 sampleValue = (s16)(sineValue *   toneVolume);
 		*sampleOut++ = sampleValue;
 		*sampleOut++ = sampleValue;
 		
-		tSine += 2.f*M_PI / (f32)wavePeriod;
+		tSine += M_2PI / (f32)wavePeriod;
 	}
 }
 
 static_internal void
-RenderGradient(game_offscreen_buffer* buffer, int xOffset, int yOffset){
+RenderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
 	u8* row = (u8*)buffer->memory;
 	for(int y = 0; y < buffer->height; ++y){
 		u32* pixel = (u32*)row;
@@ -37,7 +37,25 @@ RenderGradient(game_offscreen_buffer* buffer, int xOffset, int yOffset){
 }
 
 static_internal void 
-GameUpdateAndRender(game_offscreen_buffer* renderBuffer, game_sound_output_buffer* soundBuffer, int xOffset, int yOffset, int toneHz){
-	GameOutputSound(soundBuffer, toneHz);
-	RenderGradient(renderBuffer, xOffset, yOffset);
+GameUpdateAndRender(GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer){
+	local_persist int x_offset = 0;
+	local_persist int y_offset = 0;
+	local_persist int tone_hz  = 256;
+	
+	GameControllerInput* input0 = &input->controllers[0];
+	{
+		if(input0->is_analog){
+			x_offset += (int)(4.f*input0->stick_left.end_x);
+			tone_hz = 256 + (int)(128.f*input0->stick_left.end_y);
+		}else{
+			
+		}
+		
+		if(input0->button_down.ended_down){
+			y_offset += 1;
+		}
+	}
+	
+	GameOutputSound(sound_buffer, tone_hz);
+	RenderGradient(render_buffer, x_offset, y_offset);
 }

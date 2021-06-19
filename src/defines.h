@@ -3,10 +3,12 @@
 #define HMH_DEFINES_H
 
 //math macros
+#define M_EPSILON    0.001f
 #define M_PI         3.14159265359f
+#define M_2PI        6.28318530718f
 #define M_E          2.71828182846f
-#define M_TWOTHIRDS  0.66666666666f
-#define M_ONETWELFTH 0.08333333333f
+#define M_SQRT_TWO   1.41421356237f
+#define M_SQRT_THREE 1.73205080757f
 #define RADIANS(x) (x * (M_PI / 180.f))
 #define DEGREES(x) (x * (180.f / M_PI))
 
@@ -41,8 +43,9 @@ template <class F> deferrer<F> operator*(defer_dummy, F f) { return {f}; }
 #define defer auto DEFER(__LINE__) = defer_dummy{} *[&]()
 #endif // defer
 
-//size of c-style array; dont use on a pointer
-//ref: DearImGui imgui.h
-#define ArrayCount(_ARR) ((int)(sizeof(_ARR) / sizeof(*(_ARR))))
+//size of c-style array
+#define ArrayCount(_ARR) (sizeof(_ARR) / sizeof((_ARR)[0]))
+
+//#define Swap(a,b) {} (void)0
 
 #endif //HMH_DEFINES_H
