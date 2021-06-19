@@ -40,7 +40,7 @@ struct GameStickState{
 };
 
 struct GameControllerInput{
-	b32 is_analog;
+	b32 analog;
 	
 	union{
 		GameStickState sticks[2];
@@ -69,7 +69,25 @@ struct GameInput{
 	GameControllerInput controllers[4];
 };
 
+struct GameMemory{
+	b32   initialized;
+	u64   permanent_storage_size;
+	void* permanent_storage; //NOTE required to be init to zero at startup
+	u64   transient_storage_size;
+	void* transient_storage; //NOTE required to be init to zero at startup
+};
+
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
-static_internal void GameUpdateAndRender(GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer);
+static_internal void GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer);
+
+
+
+//-
+
+struct GameState{
+	int x_offset;
+	int y_offset;
+	int tone_hz;
+};
 
 #endif //HANDMADE_H

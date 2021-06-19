@@ -4,7 +4,6 @@ static_internal void
 GameOutputSound(GameSoundOutputBuffer* sound_buffer, int tone_hz){
 	local_persist f32 tSine;
 	s16 toneVolume = 3000;
-	//int tone_hz = 256;
 	int wavePeriod = sound_buffer->samples_per_second / tone_hz;
 	
 	s16* sampleOut = sound_buffer->samples;
@@ -37,25 +36,27 @@ RenderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
 }
 
 static_internal void 
-GameUpdateAndRender(GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer){
-	local_persist int x_offset = 0;
-	local_persist int y_offset = 0;
-	local_persist int tone_hz  = 256;
+GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer){
+	GameState* game_state = (GameState*)memory->permanent_storage;
+	Assert(sizeof(game_state) <= memory->permanent_storage_size);
 	
-	GameControllerInput* input0 = &input->controllers[0];
-	{
-		if(input0->is_analog){
-			x_offset += (int)(4.f*input0->stick_left.end_x);
-			tone_hz = 256 + (int)(128.f*input0->stick_left.end_y);
-		}else{
-			
-		}
-		
-		if(input0->button_down.ended_down){
-			y_offset += 1;
-		}
+	if(!memory->initialized) {
+		game_state->tone_hz  = 256;
+		memory->initialized = true;
 	}
 	
-	GameOutputSound(sound_buffer, tone_hz);
-	RenderGradient(render_buffer, x_offset, y_offset);
+	GameControllerInput* input0 = &input->controllers[0];
+	if(input0->analog){
+		game_state->x_offset += (int)(4.f*input0->stick_left.end_x);
+		game_state->tone_hz = 256 + (int)(128.f*input0->stick_left.end_y);
+	}else{
+		
+	}
+	
+	if(input0->button_down.ended_down){
+		game_state->y_offset += 1;
+	}
+	
+	GameOutputSound(sound_buffer, game_state->tone_hz);
+	RenderGradient(render_buffer, game_state->x_offset, game_state->y_offset);
 }

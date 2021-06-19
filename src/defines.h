@@ -9,21 +9,21 @@
 #define M_E          2.71828182846f
 #define M_SQRT_TWO   1.41421356237f
 #define M_SQRT_THREE 1.73205080757f
-#define RADIANS(x) (x * (M_PI / 180.f))
-#define DEGREES(x) (x * (180.f / M_PI))
+#define RADIANS(x) ((x) * (M_PI / 180.f))
+#define DEGREES(x) ((x) * (180.f / M_PI))
 
 //number typedefs
-typedef signed char    s8;
-typedef signed short   s16;
-typedef signed int     s32;
-typedef signed long    s64;
-typedef unsigned char  u8;
-typedef unsigned short u16;
-typedef unsigned int   u32;
-typedef unsigned long  u64;
-typedef float          f32;
-typedef double         f64;
-typedef s32            b32;
+typedef signed char        s8;
+typedef signed short       s16;
+typedef signed int         s32;
+typedef signed long long   s64;
+typedef unsigned char      u8;
+typedef unsigned short     u16;
+typedef unsigned int       u32;
+typedef unsigned long long u64;
+typedef float              f32;
+typedef double             f64;
+typedef s32                b32;
 
 //static defines
 #define static_internal static
@@ -45,6 +45,17 @@ template <class F> deferrer<F> operator*(defer_dummy, F f) { return {f}; }
 
 //size of c-style array
 #define ArrayCount(_ARR) (sizeof(_ARR) / sizeof((_ARR)[0]))
+
+#define Kilobytes(x) ((x)*1024)
+#define Megabytes(x) (Kilobytes((x))*1024)
+#define Gigabytes(x) (Megabytes((x))*1024)
+#define Terabytes(x) (Gigabytes((x))*1024)
+
+#if HANDMADE_SLOW
+#define Assert(expression) if(!(expression)){*(int*)0 = 0;}
+#else
+#define Assert(expression)
+#endif //DEBUG
 
 //#define Swap(a,b) {} (void)0
 
