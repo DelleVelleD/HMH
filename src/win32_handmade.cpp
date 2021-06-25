@@ -1,7 +1,8 @@
 //windows entry point
 #include "defines.h"
 
-#include <math.h>
+#include <math.h> //sinf
+#include <stdio.h> //sprintf_s
 #include "handmade.cpp"
 
 #include <windows.h>
@@ -14,6 +15,7 @@
 global_variable b32 global_running;
 global_variable Win32OffscreenBuffer global_backbuffer;
 global_variable LPDIRECTSOUNDBUFFER global_secondary_buffer;
+global_variable s64 global_perf_count_frequency;
 
 //XInputGetState, this initializes to a stub pointer
 #define XINPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
@@ -91,14 +93,27 @@ DEBUGPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size){
 
 static_internal void
 Win32LoadXInput(){
-	HMODULE xinput_library = LoadLibraryA("xinput1_4.dll"); //TODO diagnostic
-	if(!xinput_library) xinput_library = LoadLibraryA("xinput9_1_0.dll"); //TODO diagnostic
-	if(!xinput_library) xinput_library = LoadLibraryA("xinput1_3.dll"); //TODO diagnostic
+	HMODULE xinput_library = 0;
+	if(xinput_library = LoadLibraryA("xinput1_4.dll")){
+		OutputDebugStringA("Loaded xinput1_4.dll\n");
+	}else{
+		OutputDebugStringA("Failed to load xinput1_4.dll; trying to load xinput9_1_0.dll\n");
+		if(xinput_library = LoadLibraryA("xinput9_1_0.dll")){
+			OutputDebugStringA("Loaded xinput9_1_0.dll\n");
+		}else{
+			OutputDebugStringA("Failed to load xinput9_1_0.dll; trying to load xinput1_3.dll\n");
+			if(xinput_library = LoadLibraryA("xinput1_3.dll")){
+				OutputDebugStringA("Loaded xinput1_3.dll\n");
+			}
+		}
+	}
+	
 	if(xinput_library){
 		XInputGetState = (x_input_get_state*)GetProcAddress(xinput_library, "XInputGetState");
 		XInputSetState = (x_input_set_state*)GetProcAddress(xinput_library, "XInputSetState");
-		//TODO diagnostic
-	}else{ /*TODO diagnostic*/ }
+	}else{ 
+		OutputDebugStringA("Failed to load any XInput dlls\n");
+	}
 }
 
 static_internal void
@@ -379,6 +394,18 @@ Win32ProcessPendingMessages(GameControllerInput* keyboard_controller){
 	}
 }
 
+inline LARGE_INTEGER
+Win32GetWallClock(){
+	LARGE_INTEGER result;
+	QueryPerformanceCounter(&result);
+	return result;
+}
+
+inline f32
+Win32GetSecondsElapsed(LARGE_INTEGER start, LARGE_INTEGER end){
+	return (f32)(end.QuadPart - start.QuadPart) / (f32)global_perf_count_frequency;
+}
+
 int CALLBACK
 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code){
 	//// init input ////
@@ -405,7 +432,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 								  CW_USEDEFAULT, CW_USEDEFAULT,
 								  CW_USEDEFAULT, CW_USEDEFAULT,
 								  0, 0, instance, 0);
-	if(!window){ /*TODO error logging */ }
+	if(!window){ Assert(!"Failed to open window :( thanks windows"); }
 	
 	//NOTE since we specify CS_OWNDC, we can just get one device context 
 	//and use it forever b/c we dont need to share it with anyone
@@ -421,6 +448,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	Win32InitDSound(window, sound_output.samples_per_second, sound_output.secondary_buffer_size);
 	Win32ClearSoundBuffer(&sound_output);
 	global_secondary_buffer->Play(0, 0, DSBPLAY_LOOPING);
+	
+	DWORD debug_last_play_cursor = 0;
 	
 	//// init memory ////
 	s16* samples = (s16*)VirtualAlloc(0, sound_output.secondary_buffer_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
@@ -444,11 +473,18 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	//// init timers ////
 	LARGE_INTEGER perf_count_frequency_result;
 	QueryPerformanceFrequency(&perf_count_frequency_result);
-	s64 perf_count_frequency = perf_count_frequency_result.QuadPart;
+	global_perf_count_frequency = perf_count_frequency_result.QuadPart;
 	
+	int monitor_refresh_hz = 60;
+	int game_update_hz = monitor_refresh_hz / 2;
+	f32 target_seconds_per_frame = 1.0f / (f32)game_update_hz;
+	
+	//set the Windows scheduler granularity to 1ms so that our Sleep() can be more granular
+	UINT desired_scheduler_ms = 1;
+	b32 sleep_is_granular = (timeBeginPeriod(desired_scheduler_ms) == TIMERR_NOERROR);
+	
+	LARGE_INTEGER last_counter = Win32GetWallClock();
 	u64 last_cycle_count = __rdtsc();
-	LARGE_INTEGER last_counter;
-	QueryPerformanceCounter(&last_counter);
 	
 	//// start windows loop ////
 	global_running = true;
@@ -465,7 +501,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 		Win32ProcessPendingMessages(new_keyboard_controller);
 		
 		//get input from XInput
-		DWORD max_controller_count = XUSER_MAX_COUNT; //one extra b/c keyboard
+		DWORD max_controller_count = XUSER_MAX_COUNT;
+		//one extra b/c keyboard
 		if(max_controller_count > (ArrayCount(new_input->controllers) - 1)) {
 			max_controller_count = (ArrayCount(new_input->controllers) - 1);
 		}
@@ -578,30 +615,43 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 			Win32FillSoundBuffer(&sound_output, &sound_buffer, byte_to_lock, bytes_to_write);
 		}
 		
+		//update timers and clock counters
+		LARGE_INTEGER work_counter = Win32GetWallClock();
+		f32 work_seconds_elapsed = Win32GetSecondsElapsed(last_counter, work_counter);
+		
+		f32 frame_seconds_elapsed = work_seconds_elapsed;
+		if(frame_seconds_elapsed < target_seconds_per_frame){
+			if(sleep_is_granular){
+				DWORD sleep_ms = (DWORD)(1000.0f * (target_seconds_per_frame - 
+													frame_seconds_elapsed));
+				if(sleep_ms) Sleep(sleep_ms);
+			}
+			while(frame_seconds_elapsed < target_seconds_per_frame){
+				frame_seconds_elapsed = Win32GetSecondsElapsed(last_counter, 
+															   Win32GetWallClock());
+			}
+		}else{
+			OutputDebugStringA("Missed target framerate of 33.3ms!\n");
+		}
+		
 		//display render buffer
 		Win32WindowDimensions dimensions = Win32GetWindowDimensions(window);
+#if HANDMADE_INTERNAL
+		//DEBUGWin32SyncDisplay();
+#endif
 		Win32DisplayBufferInWindow(&global_backbuffer, device_context, dimensions.width, dimensions.height);
 		
-		//update timers and clock counters
-		u64 end_cycle_count = __rdtsc();
-		LARGE_INTEGER end_counter;
-		QueryPerformanceCounter(&end_counter);
 		
-		u64 cycles_elapsed = end_cycle_count - last_cycle_count;
-		s64 counter_elapsed = end_counter.QuadPart - last_counter.QuadPart;
-		f64 mspf = (1000.0*(f64)counter_elapsed) / (f64)perf_count_frequency;
-		f64 fps = (f64)perf_count_frequency / (f64)counter_elapsed;
-		f64 mcpf = (f64)cycles_elapsed / (1000.0*1000.0);
-		
-#if 0
-		//print timing info to Output
-		char buffer[256];
-		sprintf(buffer, "%.2fmspf, %.2ffps, %.2fmcpf\n", mspf, fps, mcpf);
-		OutputDebugStringA(buffer);
+#if HANDMADE_INTERNAL
+		{
+			//DWORD play_cursor;
+			//DWORD write_cursor;
+			//global_secondary_buffer->GetCurrentPosition(&play_cursor, &write_cursor);
+			
+			//debug_last_play_cursor = play_cursor;
+		}
 #endif
 		
-		last_counter = end_counter;
-		last_cycle_count = end_cycle_count;
 		
 		//reset game input
 		GameInput* temp = new_input;
@@ -609,6 +659,24 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 		old_input = temp;
 		//Swap(new_input, old_input);
 		//TODO clear these here?
+		
+		//reset timer stuffs
+		LARGE_INTEGER end_counter = Win32GetWallClock();
+		f32 mspf = 1000.0f * Win32GetSecondsElapsed(last_counter, end_counter); //@debug
+		last_counter = end_counter;
+		
+		u64 end_cycle_count = __rdtsc();
+		u64 cycles_elapsed = end_cycle_count - last_cycle_count;
+		last_cycle_count = end_cycle_count;
+		
+		//@Debug
+		//print timing info to Output
+		f32 fps  = 0.0f;
+		f32 mcpf = (f32)cycles_elapsed / (1000.0f*1000.0f);
+		
+		char fps_buffer[256];
+		sprintf_s(fps_buffer, sizeof(fps_buffer), "%.2fmspf, %.2ffps, %.2fmcpf\n", mspf, fps, mcpf);
+		OutputDebugStringA(fps_buffer);
 	}
 	return 0;
 }

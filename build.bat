@@ -6,11 +6,11 @@ REM  HANDMADE_SLOW:     0 = no slow code allowed!     1 = slow code allowed
 REM  HANDMADE_INTERNAL: 0 = build for public release  1 = build for developer only
 
 @set DEFINES=-DHANDMADE_WIN64=1 -DHANDMADE_SLOW=1 -DHANDMADE_INTERNAL=1
-@set WARNINGS=/W4 /WX /wd4201 /wd4100 /wd4189
+@set WARNINGS=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4706
 @set CL_OPTIONS=/EHa- /nologo /MT /MP /Oi /GR- /Gm- /Fm %WARNINGS%
 @set LINK_OPTIONS=/nologo /opt:ref
 @set SOURCES=win32_handmade.cpp
-@set LIBS=user32.lib gdi32.lib
+@set LIBS=user32.lib gdi32.lib winmm.lib
 @set OUT_EXE=hmh64.exe
 
 IF [%1]==[] GOTO DEBUG
