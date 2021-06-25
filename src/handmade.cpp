@@ -1,7 +1,7 @@
 #include "handmade.h"
 
 static_internal void
-GameOutputSound(GameSoundOutputBuffer* sound_buffer, int tone_hz){
+gameOutputSound(GameSoundOutputBuffer* sound_buffer, int tone_hz){
 	local_persist f32 tSine;
 	s16 toneVolume = 3000;
 	int wavePeriod = sound_buffer->samples_per_second / tone_hz;
@@ -18,7 +18,7 @@ GameOutputSound(GameSoundOutputBuffer* sound_buffer, int tone_hz){
 }
 
 static_internal void
-RenderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
+renderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
 	u8* row = (u8*)buffer->memory;
 	for(int y = 0; y < buffer->height; ++y){
 		u32* pixel = (u32*)row;
@@ -36,7 +36,7 @@ RenderGradient(GameOffscreenBuffer* buffer, int xOffset, int yOffset){
 }
 
 static_internal void 
-GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer){
+gameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer){
 	Assert((&input->controllers[0].TERMINATOR - &input->controllers[0].buttons[0]) == 
 		   ArrayCount(input->controllers[0].buttons));
 	Assert(sizeof(GameState) <= memory->permanent_storage_size);
@@ -44,10 +44,10 @@ GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* r
 	GameState* game_state = (GameState*)memory->permanent_storage;
 	if(!memory->initialized) {
 		char* filename = __FILE__;
-		DEBUGReadFileResult test = DEBUGPlatformReadEntireFile(filename);
+		DEBUGReadFileResult test = debugPlatformReadEntireFile(filename);
 		if(test.memory){
-			DEBUGPlatformWriteEntireFile("data/test.out", test.memory, test.memory_size);
-			DEBUGPlatformFreeFileMemory(test.memory);
+			debugPlatformWriteEntireFile("data/test.out", test.memory, test.memory_size);
+			debugPlatformFreeFileMemory(test.memory);
 		}
 		
 		game_state->tone_hz  = 256;
@@ -55,7 +55,7 @@ GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* r
 	}
 	
 	forn(controller_idx, ArrayCount(input->controllers)){
-		GameControllerInput* controller = GetController(input, controller_idx);
+		GameControllerInput* controller = getController(input, controller_idx);
 		if(controller->analog){
 			game_state->x_offset += (int)(4.f*(controller->left_stick_average_x));
 			game_state->tone_hz = 256 + (int)(128.f*(controller->left_stick_average_y));
@@ -74,6 +74,6 @@ GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* r
 		}
 	}
 	
-	GameOutputSound(sound_buffer, game_state->tone_hz);
-	RenderGradient(render_buffer, game_state->x_offset, game_state->y_offset);
+	gameOutputSound(sound_buffer, game_state->tone_hz);
+	renderGradient(render_buffer, game_state->x_offset, game_state->y_offset);
 }

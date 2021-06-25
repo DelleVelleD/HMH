@@ -2,14 +2,13 @@
 #ifndef HANDMADE_H
 #define HANDMADE_H
 
-
-
 inline u32 
-SafeTruncateU64(u64 value){
+safeTruncateU64(u64 value){
 	Assert(value <= 0xFFFFFFFF);
 	return (u32)value;
 }
 
+//-
 //// services provided from the platform layer to the game ////
 
 #if HANDMADE_INTERNAL
@@ -20,11 +19,12 @@ struct DEBUGReadFileResult{
 	void* memory;
 	u32   memory_size;
 };
-static_internal DEBUGReadFileResult DEBUGPlatformReadEntireFile(char* filename);
-static_internal void DEBUGPlatformFreeFileMemory(void* memory);
-static_internal b32 DEBUGPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size);
+static_internal DEBUGReadFileResult debugPlatformReadEntireFile(char* filename);
+static_internal void debugPlatformFreeFileMemory(void* memory);
+static_internal b32 debugPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size);
 #endif //HANDMADE_INTERNAL
 
+//-
 //// services provided from the game to the platform layer ////
 
 struct GameOffscreenBuffer{
@@ -80,7 +80,7 @@ struct GameControllerInput{
 struct GameInput{
 	GameControllerInput controllers[5];
 };
-inline GameControllerInput* GetController(GameInput* input, u32 controller_index){
+inline GameControllerInput* getController(GameInput* input, u32 controller_index){
 	Assert(controller_index < ArrayCount(input->controllers));
 	return &input->controllers[controller_index];
 }
@@ -94,7 +94,7 @@ struct GameMemory{
 };
 
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
-static_internal void GameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer);
+static_internal void gameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer);
 
 
 
