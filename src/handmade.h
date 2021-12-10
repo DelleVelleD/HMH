@@ -19,9 +19,9 @@ struct DEBUGReadFileResult{
 	void* memory;
 	u32   memory_size;
 };
-static_internal DEBUGReadFileResult debugPlatformReadEntireFile(char* filename);
-static_internal void debugPlatformFreeFileMemory(void* memory);
-static_internal b32 debugPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size);
+local DEBUGReadFileResult debugPlatformReadEntireFile(char* filename);
+local void debugPlatformFreeFileMemory(void* memory);
+local b32 debugPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size);
 #endif //HANDMADE_INTERNAL
 
 //-
@@ -94,9 +94,11 @@ struct GameMemory{
 };
 
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
-static_internal void gameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer, GameSoundOutputBuffer* sound_buffer);
+local void gameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer);
 
-
+//NOTE at the moment, this has to be a very fast function, it cannot be more than a millisecond or so
+//TODO reduce the pressure on this functions perf by measuring it or etc
+local void gameGetSoundSamples(GameMemory* memory, GameSoundOutputBuffer* sound_buffer);
 
 //-
 

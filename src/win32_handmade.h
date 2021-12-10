@@ -17,8 +17,13 @@ struct Win32WindowDimensions{
 };
 
 struct DEBUGWin32TimeMarker{
-	DWORD play_cursor;
-	DWORD write_cursor;
+	DWORD output_play_cursor;
+	DWORD output_write_cursor;
+	DWORD output_location;
+	DWORD output_byte_count;
+	DWORD expected_flip_play_cursor;
+	DWORD flip_play_cursor;
+	DWORD flip_write_cursor;
 };
 
 struct Win32SoundOutput{
@@ -26,6 +31,7 @@ struct Win32SoundOutput{
 	u32 running_sample_index;
 	int bytes_per_sample;
 	DWORD secondary_buffer_size;
+	DWORD safety_bytes;
 	f32 t_sine;
 	int latency_sample_count;
 };
