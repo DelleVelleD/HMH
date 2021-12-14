@@ -2,6 +2,7 @@
 *.obj
 *.exe
 *.pdb
-/data
-/logs
-/build
+*.rdbg
+data/*
+logs/*
+build/*

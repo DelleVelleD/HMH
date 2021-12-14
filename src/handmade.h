@@ -2,6 +2,8 @@
 #ifndef HANDMADE_H
 #define HANDMADE_H
 
+#include "defines.h"
+
 inline u32 
 safeTruncateU64(u64 value){
 	Assert(value <= 0xFFFFFFFF);
@@ -19,9 +21,15 @@ struct DEBUGReadFileResult{
 	void* memory;
 	u32   memorySize;
 };
-local DEBUGReadFileResult debugPlatformReadEntireFile(char* filename);
-local void debugPlatformFreeFileMemory(void* memory);
-local b32 debugPlatformWriteEntireFile(char* filename, void* memory, u32 memory_size);
+
+#define DEBUG_PLATFORM_FREE_FILE_MEMORY(name) void name(void* memory)
+typedef DEBUG_PLATFORM_FREE_FILE_MEMORY(debug_platform_free_file_memory);
+
+#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name) DEBUGReadFileResult name(char* filename)
+typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);
+
+#define DEBUG_PLATFORM_WRITE_FILE_MEMORY(name) b32 name(char* filename, void* memory, u32 memory_size)
+typedef DEBUG_PLATFORM_WRITE_FILE_MEMORY(debug_platform_write_file_memory);
 #endif //HANDMADE_INTERNAL
 
 //-
@@ -80,25 +88,34 @@ struct GameControllerInput{
 struct GameInput{
 	GameControllerInput controllers[5];
 };
-inline GameControllerInput* getController(GameInput* input, u32 controller_index){
+inline GameControllerInput* GetController(GameInput* input, u32 controller_index){
 	Assert(controller_index < ArrayCount(input->controllers));
 	return &input->controllers[controller_index];
 }
 
 struct GameMemory{
 	b32   initialized;
+	
 	u64   permanentStorageSize;
 	void* permanentStorage; //NOTE required to be init to zero at startup
 	u64   transientStorageSize;
 	void* transientStorage; //NOTE required to be init to zero at startup
+	
+	debug_platform_free_file_memory* DEBUGPlatformFreeFileMemory;
+	debug_platform_read_entire_file* DEBUGPlatformReadEntireFile;
+	debug_platform_write_file_memory* DEBUGPlatformWriteEntireFile;
 };
 
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
-local void gameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer);
+#define GAME_UPDATE_AND_RENDER(name) void name(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer)
+typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub){}
 
 //NOTE at the moment, this has to be a very fast function, it cannot be more than a millisecond or so
 //TODO reduce the pressure on this functions perf by measuring it or etc
-local void gameGetSoundSamples(GameMemory* memory, GameSoundOutputBuffer* sound_buffer);
+#define GAME_GET_SOUND_SAMPLES(name) void name(GameMemory* memory, GameSoundOutputBuffer* sound_buffer)
+typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
+GAME_GET_SOUND_SAMPLES(GameGetSoundSamplesStub){}
 
 //-
 
@@ -106,6 +123,7 @@ struct GameState{
 	int xOffset;
 	int yOffset;
 	int toneHz;
+	f32 tSine;
 };
 
 #endif //HANDMADE_H
