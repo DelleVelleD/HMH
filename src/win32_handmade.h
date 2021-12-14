@@ -7,7 +7,7 @@ struct Win32OffscreenBuffer{
 	void* memory;
 	int width;
 	int height;
-	int bytes_per_pixel;
+	int bytesPerPixel;
 	int pitch; //possible row offset
 };
 
@@ -17,23 +17,23 @@ struct Win32WindowDimensions{
 };
 
 struct DEBUGWin32TimeMarker{
-	DWORD output_play_cursor;
-	DWORD output_write_cursor;
-	DWORD output_location;
-	DWORD output_byte_count;
-	DWORD expected_flip_play_cursor;
-	DWORD flip_play_cursor;
-	DWORD flip_write_cursor;
+	DWORD outputPlayCursor;
+	DWORD outputWriteCursor;
+	DWORD outputLocation;
+	DWORD outputByteCount;
+	DWORD expectedFlipPlayCursor;
+	DWORD flipPlayCursor;
+	DWORD flipWriteCursor;
 };
 
 struct Win32SoundOutput{
-	int samples_per_second;
-	u32 running_sample_index;
-	int bytes_per_sample;
-	DWORD secondary_buffer_size;
-	DWORD safety_bytes;
-	f32 t_sine;
-	int latency_sample_count;
+	int samplesPerSecond;
+	u32 runningSampleIndex;
+	int bytesPerSample;
+	DWORD secondaryBufferSize;
+	DWORD safetyBytes;
+	f32 tSine;
+	int latencySampleCount;
 };
 
 #endif //WIN32_HANDMADE_H

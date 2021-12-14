@@ -1,13 +1,13 @@
 #include "handmade.h"
 
 local void
-gameOutputSound(GameSoundOutputBuffer* sound_buffer, int tone_hz){
+gameOutputSound(GameSoundOutputBuffer* sound_buffer, int toneHz){
 	persist f32 tSine;
 	s16 toneVolume = 3000;
-	int wavePeriod = sound_buffer->samples_per_second / tone_hz;
+	int wavePeriod = sound_buffer->samplesPerSecond / toneHz;
 	
 	s16* sampleOut = sound_buffer->samples;
-	for(int sampleIndex = 0; sampleIndex < sound_buffer->sample_count; ++sampleIndex){
+	for(int sampleIndex = 0; sampleIndex < sound_buffer->sampleCount; ++sampleIndex){
 		f32 sineValue = sinf(tSine);
 		s16 sampleValue = (s16)(sineValue *   toneVolume);
 		*sampleOut++ = sampleValue;
@@ -40,41 +40,41 @@ local void
 gameUpdateAndRender(GameMemory* memory, GameInput* input, GameOffscreenBuffer* render_buffer){
 	Assert((&input->controllers[0].TERMINATOR - &input->controllers[0].buttons[0]) == 
 		   ArrayCount(input->controllers[0].buttons));
-	Assert(sizeof(GameState) <= memory->permanent_storage_size);
+	Assert(sizeof(GameState) <= memory->permanentStorageSize);
 	
-	GameState* game_state = (GameState*)memory->permanent_storage;
+	GameState* game_state = (GameState*)memory->permanentStorage;
 	if(!memory->initialized) {
 		char* filename = __FILE__;
 		DEBUGReadFileResult test = debugPlatformReadEntireFile(filename);
 		if(test.memory){
-			debugPlatformWriteEntireFile("data/test.out", test.memory, test.memory_size);
+			debugPlatformWriteEntireFile("data/test.out", test.memory, test.memorySize);
 			debugPlatformFreeFileMemory(test.memory);
 		}
 		
-		game_state->tone_hz = 64;
+		game_state->toneHz = 64;
 		memory->initialized = true;
 	}
 	
 	forX(controller_idx, ArrayCount(input->controllers)){
 		GameControllerInput* controller = getController(input, controller_idx);
 		if(controller->analog){
-			game_state->x_offset += (int)(4.f*(controller->left_stick_average_x));
-			game_state->tone_hz = 64 + (int)(128.f*(controller->left_stick_average_y));
+			game_state->xOffset += (int)(4.f*(controller->leftStickAverageX));
+			game_state->toneHz = 64 + (int)(128.f*(controller->leftStickAverageY));
 		}else{
-			if(controller->left_stick_up.   ended_down) game_state->tone_hz = ClampMax(game_state->tone_hz + 4, 1024);
-			if(controller->left_stick_down. ended_down) game_state->tone_hz = ClampMin(game_state->tone_hz - 4, 8);
-			if(controller->button_left.     ended_down) game_state->x_offset -= 1;
-			if(controller->button_right.    ended_down) game_state->x_offset += 1;
-			if(controller->button_up.       ended_down) game_state->y_offset -= 1;
-			if(controller->button_down.     ended_down) game_state->y_offset += 1;
+			if(controller->leftStickUp.  endedDown) game_state->toneHz = ClampMax(game_state->toneHz + 4, 1024);
+			if(controller->leftStickDown.endedDown) game_state->toneHz = ClampMin(game_state->toneHz - 4, 8);
+			if(controller->buttonLeft.   endedDown) game_state->xOffset -= 1;
+			if(controller->buttonRight.  endedDown) game_state->xOffset += 1;
+			if(controller->buttonUp.     endedDown) game_state->yOffset -= 1;
+			if(controller->buttonDown.   endedDown) game_state->yOffset += 1;
 		}
 	}
 	
-	renderGradient(render_buffer, game_state->x_offset, game_state->y_offset);
+	renderGradient(render_buffer, game_state->xOffset, game_state->yOffset);
 }
 
 local void 
 gameGetSoundSamples(GameMemory* memory, GameSoundOutputBuffer* sound_buffer){
-	GameState* game_state = (GameState*)memory->permanent_storage;
-	gameOutputSound(sound_buffer, game_state->tone_hz);
+	GameState* game_state = (GameState*)memory->permanentStorage;
+	gameOutputSound(sound_buffer, game_state->toneHz);
 }

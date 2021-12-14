@@ -17,7 +17,7 @@ safeTruncateU64(u64 value){
 // and the write doesnt protect against lost data
 struct DEBUGReadFileResult{
 	void* memory;
-	u32   memory_size;
+	u32   memorySize;
 };
 local DEBUGReadFileResult debugPlatformReadEntireFile(char* filename);
 local void debugPlatformFreeFileMemory(void* memory);
@@ -36,40 +36,40 @@ struct GameOffscreenBuffer{
 };
 
 struct GameSoundOutputBuffer{
-	int  samples_per_second;
-	int  sample_count;
+	int  samplesPerSecond;
+	int  sampleCount;
 	s16* samples;
 };
 
 struct GameButtonState{
-	int half_transition_count; //twice the number of times the button's state changed
-	b32 ended_down;
+	int halfTransitionCount; //twice the number of times the button's state changed
+	b32 endedDown;
 };
 
 struct GameControllerInput{
 	b32 connected;
 	b32 analog;
 	
-	f32 left_stick_average_x;
-	f32 left_stick_average_y;
+	f32 leftStickAverageX;
+	f32 leftStickAverageY;
 	
 	union{
 		GameButtonState buttons[12];
 		struct{
-			GameButtonState left_stick_up;
-			GameButtonState left_stick_down;
-			GameButtonState left_stick_right;
-			GameButtonState left_stick_left;
+			GameButtonState leftStickUp;
+			GameButtonState leftStickDown;
+			GameButtonState leftStickRight;
+			GameButtonState leftStickLeft;
 			
-			GameButtonState button_start;
-			GameButtonState button_back;
-			GameButtonState button_up;
-			GameButtonState button_down;
-			GameButtonState button_right;
-			GameButtonState button_left;
+			GameButtonState buttonStart;
+			GameButtonState buttonBack;
+			GameButtonState buttonUp;
+			GameButtonState buttonDown;
+			GameButtonState buttonRight;
+			GameButtonState buttonLeft;
 			
-			GameButtonState shoulder_right;
-			GameButtonState shoulder_left;
+			GameButtonState shoulderRight;
+			GameButtonState shoulderLeft;
 			
 			//NOTE all buttons must be added above this line
 			GameButtonState TERMINATOR;
@@ -87,10 +87,10 @@ inline GameControllerInput* getController(GameInput* input, u32 controller_index
 
 struct GameMemory{
 	b32   initialized;
-	u64   permanent_storage_size;
-	void* permanent_storage; //NOTE required to be init to zero at startup
-	u64   transient_storage_size;
-	void* transient_storage; //NOTE required to be init to zero at startup
+	u64   permanentStorageSize;
+	void* permanentStorage; //NOTE required to be init to zero at startup
+	u64   transientStorageSize;
+	void* transientStorage; //NOTE required to be init to zero at startup
 };
 
 //timing, keyboard input, bitmap buffer to use, sound buffer to use
@@ -103,9 +103,9 @@ local void gameGetSoundSamples(GameMemory* memory, GameSoundOutputBuffer* sound_
 //-
 
 struct GameState{
-	int x_offset;
-	int y_offset;
-	int tone_hz;
+	int xOffset;
+	int yOffset;
+	int toneHz;
 };
 
 #endif //HANDMADE_H

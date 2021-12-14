@@ -1,15 +1,14 @@
 //windows entry point
-#include "defines.h"
-
 #include <math.h> //sinf
 #include <stdio.h> //sprintf_s
-#include "handmade.cpp"
 
 #include <windows.h>
 #include <xinput.h>
 #include <dsound.h>
 
+#include "defines.h"
 #include "win32_handmade.h"
+#include "handmade.cpp"
 
 //TODO temporary globals
 global_ b32 global_running;
@@ -51,7 +50,7 @@ debugPlatformReadEntireFile(char* filename){
 				if(ReadFile(file_handle, result.memory, file_size_32, &bytes_read, 0) &&
 				   file_size_32 == bytes_read){
 					//NOTE file read successfully
-					result.memory_size = file_size_32;
+					result.memorySize = file_size_32;
 				}else{
 					/*TODO error logging*/
 					debugPlatformFreeFileMemory(result.memory);
@@ -118,7 +117,7 @@ win32LoadXInput(){
 }
 
 local void
-win32InitDSound(HWND Window, s32 samples_per_second, s32 buffer_size){
+win32InitDSound(HWND Window, s32 samplesPerSecond, s32 buffer_size){
 	HRESULT result;
 	
 	//load the library
@@ -134,7 +133,7 @@ win32InitDSound(HWND Window, s32 samples_per_second, s32 buffer_size){
 		WAVEFORMATEX wave_format{};
 		wave_format.wFormatTag      = WAVE_FORMAT_PCM;
 		wave_format.nChannels       = 2;
-		wave_format.nSamplesPerSec  = samples_per_second;
+		wave_format.nSamplesPerSec  = samplesPerSecond;
 		wave_format.wBitsPerSample  = 16;
 		wave_format.nBlockAlign     = (wave_format.nChannels * wave_format.wBitsPerSample) / 8;
 		wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * wave_format.nBlockAlign;
@@ -195,7 +194,7 @@ win32ResizeDIBSection(Win32OffscreenBuffer* backbuffer, int width, int height){
 	backbuffer->width = width;
 	backbuffer->height = height;
 	int bytes_per_pixel = 4;
-	backbuffer->bytes_per_pixel = bytes_per_pixel;
+	backbuffer->bytesPerPixel = bytes_per_pixel;
 	
 	//setup bitmap info
 	backbuffer->info.bmiHeader.biSize = sizeof(backbuffer->info.bmiHeader);
@@ -270,7 +269,7 @@ local void
 win32ClearSoundBuffer(Win32SoundOutput* sound_output){
 	void* region1; void* region2;
 	DWORD region1_size, region2_size;
-	if(SUCCEEDED(global_secondary_buffer->Lock(0, sound_output->secondary_buffer_size, &region1, &region1_size, &region2, &region2_size, 0))){
+	if(SUCCEEDED(global_secondary_buffer->Lock(0, sound_output->secondaryBufferSize, &region1, &region1_size, &region2, &region2_size, 0))){
 		u8* dst_sample = (u8*)region1;
 		for(DWORD byteIndex = 0; byteIndex < region1_size; ++byteIndex){
 			*dst_sample++ = 0;
@@ -291,21 +290,21 @@ win32FillSoundBuffer(Win32SoundOutput* sound_output, GameSoundOutputBuffer* sour
 	DWORD region1_size, region2_size;
 	if(SUCCEEDED(global_secondary_buffer->Lock(byte_to_lock, bytes_to_write, &region1, &region1_size, &region2, &region2_size, 0))){
 		//TODO assert region1_size/region2_size is valid
-		DWORD region1_sample_count = region1_size/sound_output->bytes_per_sample;
+		DWORD region1_sample_count = region1_size/sound_output->bytesPerSample;
 		s16* dst_sample = (s16*)region1;
 		s16* src_sample = source_buffer->samples;
 		for(DWORD sample_idx = 0; sample_idx < region1_sample_count; ++sample_idx){
 			*dst_sample++ = *src_sample++;
 			*dst_sample++ = *src_sample++;
-			++sound_output->running_sample_index;
+			++sound_output->runningSampleIndex;
 		}
 		
-		DWORD region2_sample_count = region2_size/sound_output->bytes_per_sample;
+		DWORD region2_sample_count = region2_size/sound_output->bytesPerSample;
 		dst_sample = (s16*)region2;
 		for(DWORD sample_idx = 0; sample_idx < region2_sample_count; ++sample_idx){
 			*dst_sample++ = *src_sample++;
 			*dst_sample++ = *src_sample++;
-			++sound_output->running_sample_index;
+			++sound_output->runningSampleIndex;
 		}
 		
 		global_secondary_buffer->Unlock(region1, region1_size, region2, region2_size);
@@ -314,8 +313,8 @@ win32FillSoundBuffer(Win32SoundOutput* sound_output, GameSoundOutputBuffer* sour
 
 local void
 win32ProcessXInputDigitalButton(DWORD xinput_button_state, GameButtonState* old_state, GameButtonState* new_state, DWORD button_bit){
-	new_state->ended_down = (xinput_button_state & button_bit);
-	new_state->half_transition_count = (old_state->ended_down != new_state->ended_down) ? 1 : 0;
+	new_state->endedDown = (xinput_button_state & button_bit);
+	new_state->halfTransitionCount = (old_state->endedDown != new_state->endedDown) ? 1 : 0;
 }
 
 local f32 
@@ -331,9 +330,9 @@ win32ProcessXInputStickValue(SHORT value, SHORT deadzone_threshold){
 
 local void
 win32ProcessKeyboardMessage(GameButtonState* new_state, b32 is_down){
-	Assert(new_state->ended_down != is_down);
-	new_state->ended_down = is_down;
-	new_state->half_transition_count += 1;
+	Assert(new_state->endedDown != is_down);
+	new_state->endedDown = is_down;
+	new_state->halfTransitionCount += 1;
 }
 
 local void
@@ -351,29 +350,29 @@ win32ProcessPendingMessages(GameControllerInput* keyboard_controller){
 				b32 is_down = ((message.lParam & (1 << 31)) == 0);
 				if(was_down != is_down){
 					if      (VKCode == 'W'){
-						win32ProcessKeyboardMessage(&keyboard_controller->left_stick_up, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->leftStickUp, is_down);
 					}else if(VKCode == 'A'){
-						win32ProcessKeyboardMessage(&keyboard_controller->left_stick_left, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->leftStickLeft, is_down);
 					}else if(VKCode == 'S'){
-						win32ProcessKeyboardMessage(&keyboard_controller->left_stick_down, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->leftStickDown, is_down);
 					}else if(VKCode == 'D'){
-						win32ProcessKeyboardMessage(&keyboard_controller->left_stick_right, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->leftStickRight, is_down);
 					}else if(VKCode == 'Q'){
-						win32ProcessKeyboardMessage(&keyboard_controller->shoulder_left, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->shoulderLeft, is_down);
 					}else if(VKCode == 'E'){
-						win32ProcessKeyboardMessage(&keyboard_controller->shoulder_right, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->shoulderRight, is_down);
 					}else if(VKCode == VK_UP){
-						win32ProcessKeyboardMessage(&keyboard_controller->button_up, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->buttonUp, is_down);
 					}else if(VKCode == VK_LEFT){
-						win32ProcessKeyboardMessage(&keyboard_controller->button_left, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->buttonLeft, is_down);
 					}else if(VKCode == VK_DOWN){
-						win32ProcessKeyboardMessage(&keyboard_controller->button_down, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->buttonDown, is_down);
 					}else if(VKCode == VK_RIGHT){
-						win32ProcessKeyboardMessage(&keyboard_controller->button_right, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->buttonRight, is_down);
 					}else if(VKCode == VK_ESCAPE){
-						win32ProcessKeyboardMessage(&keyboard_controller->button_start, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->buttonStart, is_down);
 					}else if(VKCode == VK_SPACE){
-						win32ProcessKeyboardMessage(&keyboard_controller->button_back, is_down);
+						win32ProcessKeyboardMessage(&keyboard_controller->buttonBack, is_down);
 					}
 #if HANDMADE_INTERNAL
 					else if(VKCode == 'P'){
@@ -420,7 +419,7 @@ win32DebugDrawVertical(Win32OffscreenBuffer* backbuffer, int x, int top, int bot
 	top = ClampMin(top, 0);
 	bottom = ClampMax(bottom, backbuffer->height);
 	if((x >= 0) && (x < backbuffer->width)){
-		u8* pixel = (u8*)backbuffer->memory + (x * backbuffer->bytes_per_pixel) + (top * backbuffer->pitch);
+		u8* pixel = (u8*)backbuffer->memory + (x * backbuffer->bytesPerPixel) + (top * backbuffer->pitch);
 		for(int y = top; y < bottom; ++y){
 			*(u32*)pixel = color;
 			pixel += backbuffer->pitch;
@@ -441,16 +440,16 @@ win32DebugSyncDisplay(Win32OffscreenBuffer* backbuffer, Win32SoundOutput* sound,
 	int pad_x = 16;
 	int pad_y = 16;
 	int line_height = 64;
-	f32 coef = (f32)(backbuffer->width - 2*pad_x) / (f32)sound->secondary_buffer_size;
+	f32 coef = (f32)(backbuffer->width - 2*pad_x) / (f32)sound->secondaryBufferSize;
 	
 	forX(marker_idx, marker_count){
 		DEBUGWin32TimeMarker* marker = &markers[marker_idx];
-		Assert(marker->output_play_cursor < sound->secondary_buffer_size);
-		Assert(marker->output_write_cursor < sound->secondary_buffer_size);
-		Assert(marker->output_location < sound->secondary_buffer_size);
-		Assert(marker->output_byte_count < sound->secondary_buffer_size);
-		Assert(marker->flip_play_cursor < sound->secondary_buffer_size);
-		Assert(marker->flip_write_cursor < sound->secondary_buffer_size);
+		Assert(marker->outputPlayCursor < sound->secondaryBufferSize);
+		Assert(marker->outputWriteCursor < sound->secondaryBufferSize);
+		Assert(marker->outputLocation < sound->secondaryBufferSize);
+		Assert(marker->outputByteCount < sound->secondaryBufferSize);
+		Assert(marker->flipPlayCursor < sound->secondaryBufferSize);
+		Assert(marker->flipWriteCursor < sound->secondaryBufferSize);
 		
 		DWORD play_color = 0xFFFFFFFF;
 		DWORD write_color = 0xFFFF0000;
@@ -463,21 +462,21 @@ win32DebugSyncDisplay(Win32OffscreenBuffer* backbuffer, Win32SoundOutput* sound,
 			bottom += line_height + pad_y;
 			int first_top = top;
 			
-			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->output_play_cursor,  play_color);
-			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->output_write_cursor, write_color);
+			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->outputPlayCursor,  play_color);
+			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->outputWriteCursor, write_color);
 			top += line_height + pad_y;
 			bottom += line_height + pad_y;
 			
-			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->output_location, play_color);
-			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->output_location + marker->output_byte_count, write_color);
+			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->outputLocation, play_color);
+			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->outputLocation + marker->outputByteCount, write_color);
 			top += line_height + pad_y;
 			bottom += line_height + pad_y;
-			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,first_top,bottom, marker->expected_flip_play_cursor, expected_flip_color);
+			win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,first_top,bottom, marker->expectedFlipPlayCursor, expected_flip_color);
 		}
 		
-		win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->flip_play_cursor,  play_color);
-		win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->flip_play_cursor + 480*sound->bytes_per_sample,  play_window_color);
-		win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->flip_write_cursor, write_color);
+		win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->flipPlayCursor,  play_color);
+		win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->flipPlayCursor + 480*sound->bytesPerSample,  play_window_color);
+		win32DebugDrawSoundBufferMarker(backbuffer,sound, coef, pad_x,top,bottom, marker->flipWriteCursor, write_color);
 	}
 }
 
@@ -532,13 +531,13 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	
 	//// init sound ////
 	Win32SoundOutput sound_output{};
-	sound_output.samples_per_second    = 48000;
-	sound_output.bytes_per_sample      = 2*sizeof(s16);
-	sound_output.secondary_buffer_size = sound_output.samples_per_second * sound_output.bytes_per_sample;
-	sound_output.latency_sample_count  = 3*(sound_output.samples_per_second / game_update_hz);
-	sound_output.safety_bytes          = ((sound_output.samples_per_second * sound_output.bytes_per_sample) / game_update_hz) / 3;
+	sound_output.samplesPerSecond    = 48000;
+	sound_output.bytesPerSample      = 2*sizeof(s16);
+	sound_output.secondaryBufferSize = sound_output.samplesPerSecond * sound_output.bytesPerSample;
+	sound_output.latencySampleCount  = 3*(sound_output.samplesPerSecond / game_update_hz);
+	sound_output.safetyBytes          = ((sound_output.samplesPerSecond * sound_output.bytesPerSample) / game_update_hz) / 3;
 	
-	win32InitDSound(window, sound_output.samples_per_second, sound_output.secondary_buffer_size);
+	win32InitDSound(window, sound_output.samplesPerSecond, sound_output.secondaryBufferSize);
 	win32ClearSoundBuffer(&sound_output);
 	global_secondary_buffer->Play(0, 0, DSBPLAY_LOOPING);
 	
@@ -563,7 +562,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 #endif
 	
 	//// init memory ////
-	s16* samples = (s16*)VirtualAlloc(0, sound_output.secondary_buffer_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+	s16* samples = (s16*)VirtualAlloc(0, sound_output.secondaryBufferSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	
 #if HANDMADE_INTERNAL
 	LPVOID base_address = (LPVOID)Terabytes(2);
@@ -572,14 +571,14 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 #endif //HANDMADE_INTERNAL
 	
 	GameMemory game_memory{};
-	game_memory.permanent_storage_size = Megabytes(64);
-	game_memory.transient_storage_size = Gigabytes(1);
-	u64 total_size = game_memory.permanent_storage_size + game_memory.transient_storage_size;
+	game_memory.permanentStorageSize = Megabytes(64);
+	game_memory.transientStorageSize = Gigabytes(1);
+	u64 total_size = game_memory.permanentStorageSize + game_memory.transientStorageSize;
 	
-	game_memory.permanent_storage = VirtualAlloc(base_address, (size_t)total_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-	game_memory.transient_storage = (u8*)game_memory.permanent_storage + game_memory.permanent_storage_size;
+	game_memory.permanentStorage = VirtualAlloc(base_address, (size_t)total_size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+	game_memory.transientStorage = (u8*)game_memory.permanentStorage + game_memory.permanentStorageSize;
 	
-	if(!samples || !game_memory.permanent_storage || !game_memory.transient_storage){ /*TODO error logging */ }
+	if(!samples || !game_memory.permanentStorage || !game_memory.transientStorage){ /*TODO error logging */ }
 	
 	//// start windows loop ////
 	last_counter = win32GetWallClock();
@@ -592,7 +591,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 		*new_keyboard_controller = {};
 		new_keyboard_controller->connected = true;
 		forX(button_idx, ArrayCount(new_keyboard_controller->buttons)){
-			new_keyboard_controller->buttons[button_idx].ended_down = old_keyboard_controller->buttons[button_idx].ended_down;
+			new_keyboard_controller->buttons[button_idx].endedDown = old_keyboard_controller->buttons[button_idx].endedDown;
 		}
 		
 		//handle a message when there is one, keep going otherwise
@@ -618,49 +617,49 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 					new_controller->connected = true;
 					
 					//sticks as analogs
-					new_controller->left_stick_average_x = win32ProcessXInputStickValue(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-					new_controller->left_stick_average_y = win32ProcessXInputStickValue(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-					if(new_controller->left_stick_average_x != 0.0f || new_controller->left_stick_average_y != 0.0f){
+					new_controller->leftStickAverageX = win32ProcessXInputStickValue(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+					new_controller->leftStickAverageY = win32ProcessXInputStickValue(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+					if(new_controller->leftStickAverageX != 0.0f || new_controller->leftStickAverageY != 0.0f){
 						new_controller->analog = true;
 					}
 					
 					//dpad (currently overrides left stick analogs)
 					if(pad->wButtons & XINPUT_GAMEPAD_DPAD_UP){
-						new_controller->left_stick_average_y = 1.f;
+						new_controller->leftStickAverageY = 1.f;
 						new_controller->analog = false;
 					}
 					if(pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN){
-						new_controller->left_stick_average_y = -1.f;
+						new_controller->leftStickAverageY = -1.f;
 						new_controller->analog = false;
 					}
 					if(pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT){
-						new_controller->left_stick_average_x = 1.f;
+						new_controller->leftStickAverageX = 1.f;
 						new_controller->analog = false;
 					}
 					if(pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT){
-						new_controller->left_stick_average_x = -1.f;
+						new_controller->leftStickAverageX = -1.f;
 						new_controller->analog = false;
 					}
 					
 					//sticks as buttons
-					win32ProcessXInputDigitalButton((new_controller->left_stick_average_x < -0.5f) ? 1 : 0,
-													&old_controller->left_stick_left, &new_controller->left_stick_left, 1);
-					win32ProcessXInputDigitalButton((new_controller->left_stick_average_x > 0.5f) ? 1 : 0,
-													&old_controller->left_stick_right, &new_controller->left_stick_right, 1);
-					win32ProcessXInputDigitalButton((new_controller->left_stick_average_y < -0.5f) ? 1 : 0,
-													&old_controller->left_stick_up, &new_controller->left_stick_up, 1);
-					win32ProcessXInputDigitalButton((new_controller->left_stick_average_y > 0.5f) ? 1 : 0,
-													&old_controller->left_stick_down, &new_controller->left_stick_down, 1);
+					win32ProcessXInputDigitalButton((new_controller->leftStickAverageX < -0.5f) ? 1 : 0,
+													&old_controller->leftStickLeft, &new_controller->leftStickLeft, 1);
+					win32ProcessXInputDigitalButton((new_controller->leftStickAverageX > 0.5f) ? 1 : 0,
+													&old_controller->leftStickRight, &new_controller->leftStickRight, 1);
+					win32ProcessXInputDigitalButton((new_controller->leftStickAverageY < -0.5f) ? 1 : 0,
+													&old_controller->leftStickUp, &new_controller->leftStickUp, 1);
+					win32ProcessXInputDigitalButton((new_controller->leftStickAverageY > 0.5f) ? 1 : 0,
+													&old_controller->leftStickDown, &new_controller->leftStickDown, 1);
 					
 					//buttons
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_down, &new_controller->button_down, XINPUT_GAMEPAD_A);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_right, &new_controller->button_right, XINPUT_GAMEPAD_B);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_left, &new_controller->button_left, XINPUT_GAMEPAD_X);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_up, &new_controller->button_up, XINPUT_GAMEPAD_Y);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->shoulder_left, &new_controller->shoulder_left, XINPUT_GAMEPAD_LEFT_SHOULDER);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->shoulder_right, &new_controller->shoulder_right, XINPUT_GAMEPAD_RIGHT_SHOULDER);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_start, &new_controller->button_start, XINPUT_GAMEPAD_START);
-					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->button_back, &new_controller->button_back, XINPUT_GAMEPAD_BACK);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->buttonDown, &new_controller->buttonDown, XINPUT_GAMEPAD_A);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->buttonRight, &new_controller->buttonRight, XINPUT_GAMEPAD_B);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->buttonLeft, &new_controller->buttonLeft, XINPUT_GAMEPAD_X);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->buttonUp, &new_controller->buttonUp, XINPUT_GAMEPAD_Y);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->shoulderLeft, &new_controller->shoulderLeft, XINPUT_GAMEPAD_LEFT_SHOULDER);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->shoulderRight, &new_controller->shoulderRight, XINPUT_GAMEPAD_RIGHT_SHOULDER);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->buttonStart, &new_controller->buttonStart, XINPUT_GAMEPAD_START);
+					win32ProcessXInputDigitalButton(pad->wButtons, &old_controller->buttonBack, &new_controller->buttonBack, XINPUT_GAMEPAD_BACK);
 					
 					//controller rumble
 					//XINPUT_VIBRATION vibration;
@@ -706,35 +705,35 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 				*/
 				
 				if(!sound_is_valid){
-					sound_output.running_sample_index = write_cursor / sound_output.bytes_per_sample;
+					sound_output.runningSampleIndex = write_cursor / sound_output.bytesPerSample;
 					sound_is_valid = true;
 				}
 				
-				DWORD expected_sound_bytes_per_frame = (sound_output.samples_per_second * sound_output.bytes_per_sample) / game_update_hz;
+				DWORD expected_sound_bytes_per_frame = (sound_output.samplesPerSecond * sound_output.bytesPerSample) / game_update_hz;
 				f32 seconds_left_until_flip = target_seconds_per_frame - from_being_to_audio_seconds;
 				DWORD expected_bytes_until_flip = (DWORD)((seconds_left_until_flip / target_seconds_per_frame) * (f32)expected_sound_bytes_per_frame);
 				DWORD expected_frame_boundary_byte = play_cursor + expected_sound_bytes_per_frame;
 				
 				DWORD safe_write_cursor = write_cursor;
 				if(safe_write_cursor < play_cursor){
-					safe_write_cursor += sound_output.secondary_buffer_size;
+					safe_write_cursor += sound_output.secondaryBufferSize;
 				}
 				Assert(safe_write_cursor >= play_cursor);
-				safe_write_cursor += sound_output.safety_bytes;
+				safe_write_cursor += sound_output.safetyBytes;
 				
 				DWORD target_cursor = 0;
 				b32 audio_card_is_low_latency = (safe_write_cursor < expected_frame_boundary_byte);
 				if(audio_card_is_low_latency){
 					target_cursor = expected_frame_boundary_byte + expected_sound_bytes_per_frame;
 				}else{
-					target_cursor = write_cursor + expected_sound_bytes_per_frame + sound_output.safety_bytes;
+					target_cursor = write_cursor + expected_sound_bytes_per_frame + sound_output.safetyBytes;
 				}
-				target_cursor %= sound_output.secondary_buffer_size;
+				target_cursor %= sound_output.secondaryBufferSize;
 				
-				DWORD byte_to_lock = (sound_output.running_sample_index * sound_output.bytes_per_sample) % sound_output.secondary_buffer_size;
+				DWORD byte_to_lock = (sound_output.runningSampleIndex * sound_output.bytesPerSample) % sound_output.secondaryBufferSize;
 				DWORD bytes_to_write = 0;
 				if(byte_to_lock > target_cursor){
-					bytes_to_write = sound_output.secondary_buffer_size - byte_to_lock;
+					bytes_to_write = sound_output.secondaryBufferSize - byte_to_lock;
 					bytes_to_write += target_cursor;
 				}else{
 					bytes_to_write = target_cursor - byte_to_lock;
@@ -742,23 +741,23 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 				
 				//create sound buffer for game
 				GameSoundOutputBuffer sound_buffer{};
-				sound_buffer.samples_per_second = sound_output.samples_per_second;
-				sound_buffer.sample_count       = bytes_to_write / sound_output.bytes_per_sample;
-				sound_buffer.samples            = samples;
+				sound_buffer.samplesPerSecond = sound_output.samplesPerSecond;
+				sound_buffer.sampleCount      = bytes_to_write / sound_output.bytesPerSample;
+				sound_buffer.samples          = samples;
 				gameGetSoundSamples(&game_memory, &sound_buffer);
 				
 #if HANDMADE_INTERNAL
 				DEBUGWin32TimeMarker* marker = &DEBUG_time_markers[DEBUG_marker_idx];
-				marker->output_play_cursor        = play_cursor;
-				marker->output_write_cursor       = write_cursor;
-				marker->output_location           = byte_to_lock;
-				marker->output_byte_count         = bytes_to_write;
-				marker->expected_flip_play_cursor = expected_frame_boundary_byte;
+				marker->outputPlayCursor        = play_cursor;
+				marker->outputWriteCursor       = write_cursor;
+				marker->outputLocation           = byte_to_lock;
+				marker->outputByteCount         = bytes_to_write;
+				marker->expectedFlipPlayCursor = expected_frame_boundary_byte;
 				
 				DWORD unwrapped_write_cursor = write_cursor;
-				if(unwrapped_write_cursor < play_cursor) unwrapped_write_cursor += sound_output.secondary_buffer_size;
+				if(unwrapped_write_cursor < play_cursor) unwrapped_write_cursor += sound_output.secondaryBufferSize;
 				audio_latency_bytes = unwrapped_write_cursor - play_cursor;
-				audio_latency_seconds = ((f32)audio_latency_bytes / (f32)sound_output.bytes_per_sample) / (f32)sound_output.samples_per_second;
+				audio_latency_seconds = ((f32)audio_latency_bytes / (f32)sound_output.bytesPerSample) / (f32)sound_output.samplesPerSecond;
 				
 				char buffer[256];
 				sprintf_s(buffer, sizeof(buffer), "BTL:%6u TC:%6u BTW:%u - PC:%6u WC:%6u DELTA:%u (%fms)\n", 
@@ -816,8 +815,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 			if(global_secondary_buffer->GetCurrentPosition(&play_cursor, &write_cursor) == DS_OK){
 				Assert(DEBUG_marker_idx < ArrayCount(DEBUG_time_markers));
 				DEBUGWin32TimeMarker* marker = &DEBUG_time_markers[DEBUG_marker_idx];
-				marker->flip_play_cursor  = play_cursor;
-				marker->flip_write_cursor = write_cursor;
+				marker->flipPlayCursor  = play_cursor;
+				marker->flipWriteCursor = write_cursor;
 			}
 #endif //HANDMADE_INTERNAL
 			
