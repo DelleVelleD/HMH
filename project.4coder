@@ -40,7 +40,7 @@ command_list = {
 		.name = "remedy_open", 
 		.out = "", .footer_panel = false, .save_dirty_files = true, .cursor_at_end = false,
 		.cmd = {
-			{ "remedybg.exe open-session misc\hmh64.rdbg", .os = "win" },
+			{ "remedybg.exe open-session hmh64.rdbg", .os = "win" },
 		},
 	},
 	{

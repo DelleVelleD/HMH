@@ -87,17 +87,30 @@ DEBUG_PLATFORM_WRITE_FILE_MEMORY(DEBUGPlatformWriteEntireFile){
 	return result;
 }
 
+local FILETIME Win32GetLastWriteTime(char* filepath){
+	FILETIME last_write_time = {};
+	WIN32_FIND_DATA find_data;
+	HANDLE find_handle = FindFirstFileA(filepath, &find_data);
+	if(find_handle != INVALID_HANDLE_VALUE){
+		last_write_time = find_data.ftLastWriteTime;
+		FindClose(find_handle);
+	}
+	return last_write_time;
+}
+
 struct Win32GameCode{
 	HMODULE dll;
+	FILETIME dllLastWriteTime;
 	game_update_and_render* UpdateAndRender;
 	game_get_sound_samples* GetSoundSamples;
 	b32 isValid;
 };
 function Win32GameCode
-Win32LoadGameCode(){
+Win32LoadGameCode(char* source_dll_filepath, char* temp_dll_filepath){
 	Win32GameCode result = {};
-	CopyFile("handmade.dll", "handmade_temp.dll", FALSE);
-	result.dll = LoadLibraryA("handmade_temp.dll");
+	result.dllLastWriteTime = Win32GetLastWriteTime(source_dll_filepath);
+	CopyFile(source_dll_filepath, temp_dll_filepath, FALSE);
+	result.dll = LoadLibraryA(temp_dll_filepath);
 	if(result.dll){
 		result.UpdateAndRender = (game_update_and_render*)GetProcAddress(result.dll, "GameUpdateAndRender");
 		result.GetSoundSamples = (game_get_sound_samples*)GetProcAddress(result.dll, "GameGetSoundSamples");
@@ -107,7 +120,6 @@ Win32LoadGameCode(){
 		result.UpdateAndRender = GameUpdateAndRenderStub;
 		result.GetSoundSamples = GameGetSoundSamplesStub;
 	}
-	
 	return result;
 }
 
@@ -511,8 +523,37 @@ DEBUGWin32SyncDisplay(Win32OffscreenBuffer* backbuffer, Win32SoundOutput* sound,
 	}
 }
 
+function void
+ConcatStrings(upt src1_size, char* src1, upt src2_size, char* src2, upt dest_size, char* dest){
+	forI(src1_size) *dest++ = *src1++;
+	forI(src2_size) *dest++ = *src2++;
+	*dest++ = 0;
+}
+
 int CALLBACK
 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code){
+	//// setup directory ////
+	char exe_filepath[MAX_PATH];
+	DWORD filepath_size = GetModuleFileNameA(0, exe_filepath, sizeof(exe_filepath));
+	char* exe_filename = exe_filepath;
+	for(char* scan = exe_filepath; *scan != 0; ++scan){
+		if(*scan == '\\'){
+			exe_filename = scan+1;
+		}
+	}
+	
+	char source_game_code_dll_filename[] = "handmade.dll";
+	char source_game_code_dll_filepath[MAX_PATH];
+	ConcatStrings(exe_filename-exe_filepath, exe_filepath, 
+				  sizeof(source_game_code_dll_filename)-1, source_game_code_dll_filename,
+				  sizeof(source_game_code_dll_filepath), source_game_code_dll_filepath);
+	
+	char temp_game_code_dll_filename[] = "handmade_temp.dll";
+	char temp_game_code_dll_filepath[MAX_PATH];
+	ConcatStrings(exe_filename-exe_filepath, exe_filepath, 
+				  sizeof(temp_game_code_dll_filename)-1, temp_game_code_dll_filename,
+				  sizeof(temp_game_code_dll_filepath), temp_game_code_dll_filepath);
+	
 	//// setup timers ////
 	LARGE_INTEGER perf_count_frequency_result;
 	QueryPerformanceFrequency(&perf_count_frequency_result);
@@ -614,19 +655,16 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int sho
 	if(!samples || !game_memory.permanentStorage || !game_memory.transientStorage){ /*TODO error logging */ }
 	
 	//// start windows loop ////
-	Win32GameCode game = Win32LoadGameCode();
-	u32 load_counter = 120;
-	
+	Win32GameCode game = Win32LoadGameCode(source_game_code_dll_filepath, temp_game_code_dll_filepath);
 	last_counter = Win32GetWallClock();
 	flip_wall_clock = Win32GetWallClock();
 	last_cycle_count = __rdtsc();
-	
 	global_running = true;
 	while(global_running){
-		if(load_counter++ > 120){
+		FILETIME new_dll_write_time = Win32GetLastWriteTime(source_game_code_dll_filepath);
+		if(CompareFileTime(&new_dll_write_time, &game.dllLastWriteTime) != 0){
 			Win32UnloadGameCode(&game);
-			game = Win32LoadGameCode();
-			load_counter = 0;
+			game = Win32LoadGameCode(source_game_code_dll_filepath, temp_game_code_dll_filepath);
 		}
 		
 		GameControllerInput* old_keyboard_controller = GetController(old_input, 0);
